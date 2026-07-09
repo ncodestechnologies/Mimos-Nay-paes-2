@@ -255,6 +255,41 @@ export default function App() {
             <span className="hidden sm:flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-gold-500" /> contato@mimosnaypaes.com.br</span>
           </div>
           <div className="flex items-center gap-3">
+            {!currentUser || currentUser.role === "customer" ? (
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/auth/login", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email: "admin@mimosnaypaes.com.br", password: "admin123" })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      handleLogin(data);
+                      setActiveRoute("admin");
+                      showToast("Modo Administrador ativado com sucesso!");
+                    }
+                  } catch (e) {
+                    console.error(e);
+                  }
+                }}
+                className="px-2 py-1 bg-gradient-to-r from-stone-900 to-stone-800 text-gold-400 border border-gold-400/30 rounded text-[10px] font-bold tracking-normal uppercase cursor-pointer transition hover:from-stone-800 hover:to-stone-700 flex items-center gap-1 shadow-sm"
+              >
+                <Sparkles className="w-3 h-3 text-gold-400 animate-pulse" />
+                Acessar Admin (Demo)
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] bg-gold-100 text-gold-700 font-bold px-1.5 py-0.5 rounded">MODO ADMIN</span>
+                <button
+                  onClick={handleLogout}
+                  className="hover:text-rose-500 transition-colors text-[9px] font-semibold uppercase underline cursor-pointer"
+                >
+                  Sair
+                </button>
+              </div>
+            )}
             <a href="https://instagram.com/mimosnaypaes" target="_blank" referrerPolicy="no-referrer" className="hover:text-gold-500 transition-colors flex items-center gap-1">
               <Instagram className="w-3.5 h-3.5 text-gold-500" /> @mimosnaypaes
             </a>
@@ -311,17 +346,15 @@ export default function App() {
               {currentUser ? "Minha Área" : "Entrar / Cadastro"}
             </button>
 
-            {/* Admin Bypass Link if staff member */}
-            {currentUser && currentUser.role !== "customer" && (
-              <button
-                onClick={() => setActiveRoute("admin")}
-                className={`px-3 py-1 bg-stone-800 hover:bg-stone-700 text-white rounded text-xs font-semibold cursor-pointer transition ${
-                  activeRoute === "admin" ? "bg-gold-500" : ""
-                }`}
-              >
-                Painel Admin
-              </button>
-            )}
+            {/* Admin Link always visible, gating login if not staff */}
+            <button
+              onClick={() => setActiveRoute("admin")}
+              className={`px-3 py-1 bg-stone-800 hover:bg-stone-700 text-white rounded text-xs font-semibold cursor-pointer transition flex items-center gap-1 ${
+                activeRoute === "admin" ? "bg-gold-500 text-stone-900 font-bold" : ""
+              }`}
+            >
+              Painel Admin 🔑
+            </button>
           </nav>
 
           {/* Header Action Icons */}
@@ -397,14 +430,14 @@ export default function App() {
             >
               Área do Cliente
             </button>
-            {currentUser && currentUser.role !== "customer" && (
-              <button
-                onClick={() => { setActiveRoute("admin"); setMobileMenuOpen(false); }}
-                className="block w-full text-left text-sm font-semibold text-white bg-stone-800 p-2 rounded text-center"
-              >
-                Painel Admin
-              </button>
-            )}
+            <button
+              onClick={() => { setActiveRoute("admin"); setMobileMenuOpen(false); }}
+              className={`block w-full text-left text-sm font-semibold p-2 rounded text-center ${
+                activeRoute === "admin" ? "bg-gold-500 text-stone-900 font-bold" : "bg-stone-800 text-white hover:bg-stone-700"
+              }`}
+            >
+              Painel Admin 🔑
+            </button>
           </div>
         )}
       </header>
@@ -749,6 +782,7 @@ export default function App() {
             currentUser={currentUser}
             allProducts={allProducts}
             onRefreshProducts={fetchProducts}
+            onLoginSuccess={handleLogin}
           />
         )}
       </main>
@@ -781,6 +815,7 @@ export default function App() {
               <li><button onClick={() => setActiveRoute("sobre")} className="hover:text-white transition cursor-pointer">Quem Somos</button></li>
               <li><button onClick={() => setActiveRoute("contato")} className="hover:text-white transition cursor-pointer">Fale Conosco</button></li>
               <li><button onClick={() => setActiveRoute("cliente")} className="hover:text-white transition cursor-pointer">Acessar Minha Conta</button></li>
+              <li><button onClick={() => setActiveRoute("admin")} className="hover:text-white transition cursor-pointer">Painel Administrativo 🔑</button></li>
             </ul>
           </div>
 

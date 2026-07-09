@@ -3,18 +3,27 @@ import { User, Product, Order, FinanceEntry, ProductionItem, StockItem } from ".
 import { 
   BarChart3, Box, Users, Wallet, ClipboardList, Hammer, Settings, Plus, 
   Search, ShieldAlert, Eye, Edit, Trash2, CheckCircle2, AlertTriangle, 
-  TrendingUp, Download, ArrowUpRight, ArrowDownRight, PackageCheck, Ban, Check 
+  TrendingUp, Download, ArrowUpRight, ArrowDownRight, PackageCheck, Ban, Check,
+  Lock, Key, Mail, EyeOff, ShieldCheck
 } from "lucide-react";
 
 interface DashboardAdminProps {
   currentUser: User | null;
   allProducts: Product[];
   onRefreshProducts: () => void;
+  onLoginSuccess: (user: User) => void;
 }
 
 type AdminRole = "admin" | "finance" | "production" | "atendimento";
 
-export default function DashboardAdmin({ currentUser, allProducts, onRefreshProducts }: DashboardAdminProps) {
+export default function DashboardAdmin({ currentUser, allProducts, onRefreshProducts, onLoginSuccess }: DashboardAdminProps) {
+  // Admin Login States
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   // Simulating active session role bypass for demonstration/testing ease
   const [activeRole, setActiveRole] = useState<AdminRole>("admin");
   const [currentTab, setCurrentTab] = useState<"visao-geral" | "produtos" | "clientes" | "financeiro" | "producao" | "estoque" | "relatorios">("visao-geral");
@@ -81,8 +90,183 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
   };
 
   useEffect(() => {
-    loadAdminData();
-  }, []);
+    if (currentUser && currentUser.role !== "customer") {
+      loadAdminData();
+    }
+  }, [currentUser]);
+
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    setIsLoggingIn(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: adminEmail, password: adminPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoginError(data.error || "Erro ao efetuar login administrativo.");
+      } else if (data.role === "customer") {
+        setLoginError("Acesso recusado. Esta conta não possui privilégios de equipe administrativa.");
+      } else {
+        onLoginSuccess(data);
+      }
+    } catch (err) {
+      setLoginError("Erro na conexão com o servidor.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleQuickAdminLogin = async (email: string, pass: string) => {
+    setLoginError("");
+    setIsLoggingIn(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: pass })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoginError(data.error || "Erro ao efetuar login administrativo.");
+      } else if (data.role === "customer") {
+        setLoginError("Acesso recusado. Esta conta não possui privilégios de equipe administrativa.");
+      } else {
+        onLoginSuccess(data);
+      }
+    } catch (err) {
+      setLoginError("Erro na conexão com o servidor.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  // Render Login Gate for non-staff
+  if (!currentUser || currentUser.role === "customer") {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 bg-beige-50/10 py-12">
+        <div className="bg-white border border-beige-200 rounded-3xl p-8 max-w-md w-full shadow-xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 bg-stone-900 rounded-full flex items-center justify-center mx-auto mb-2 text-gold-400">
+              <Lock className="w-5 h-5" />
+            </div>
+            <h2 className="font-display text-2.5xl text-stone-800 tracking-tight font-semibold">
+              Mimos <span className="font-sans font-light text-rose-500 text-2xl">Nay Paes</span>
+            </h2>
+            <p className="text-[10px] uppercase tracking-widest text-gold-600 font-bold">Painel Administrativo Restrito</p>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200/50 rounded-2xl p-4 text-xs text-amber-800 leading-relaxed flex items-start gap-2.5">
+            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <span>
+              Esta é uma área restrita reservada exclusivamente para a administração geral, equipe financeira, produção do ateliê e atendimento ao cliente.
+            </span>
+          </div>
+
+          <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
+            {loginError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl p-3 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">E-mail Corporativo</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3.5 text-stone-400 w-4 h-4" />
+                <input
+                  type="email"
+                  required
+                  placeholder="admin@mimosnaypaes.com.br"
+                  className="mimos-input pl-10 py-2.5 text-xs"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">Senha de Acesso</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3.5 text-stone-400 w-4 h-4" />
+                <input
+                  type={showAdminPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  className="mimos-input pl-10 pr-10 py-2.5 text-xs"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAdminPassword(!showAdminPassword)}
+                  className="absolute right-3 top-3.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+                >
+                  {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="mimos-btn-primary w-full flex items-center justify-center gap-2 py-3 text-xs font-bold shadow-md hover:shadow-lg hover:scale-[1.01] transition-all disabled:opacity-50"
+            >
+              <Key className="w-4 h-4 text-gold-200" />
+              {isLoggingIn ? "Efetuando autenticação..." : "Entrar no Painel 🔑"}
+            </button>
+          </form>
+
+          <div className="border-t border-beige-100 pt-5">
+            <p className="text-center text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">
+              Acesso Rápido de Demonstração
+            </p>
+            <div className="grid grid-cols-1 gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleQuickAdminLogin("admin@mimosnaypaes.com.br", "admin123")}
+                className="w-full px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white border border-stone-800 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm group"
+              >
+                <span className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-gold-400 group-hover:scale-110 transition" />
+                  <span>Gerente Geral (Admin)</span>
+                </span>
+                <span className="text-[10px] text-stone-400 font-mono">Acessar ➜</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickAdminLogin("financeiro@mimosnaypaes.com.br", "financeiro123")}
+                className="w-full px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm group"
+              >
+                <span className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition shrink-0" />
+                  <span>Fluxo Financeiro</span>
+                </span>
+                <span className="text-[10px] text-emerald-600 font-mono font-bold">Acessar ➜</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickAdminLogin("producao@mimosnaypaes.com.br", "producao123")}
+                className="w-full px-4 py-2.5 bg-rose-50 hover:bg-rose-100/80 text-rose-900 border border-rose-200 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm group"
+              >
+                <span className="flex items-center gap-2">
+                  <Hammer className="w-4 h-4 text-rose-600 group-hover:scale-110 transition shrink-0" />
+                  <span>Oficina de Produção</span>
+                </span>
+                <span className="text-[10px] text-rose-600 font-mono font-bold">Acessar ➜</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // PERMISSION ASSESSOR
   const hasAccess = (allowed: AdminRole[]) => {

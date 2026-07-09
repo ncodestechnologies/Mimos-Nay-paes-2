@@ -143,6 +143,25 @@ export default function CustomerArea({
     }
   };
 
+  const handleQuickLogin = async (email: string, pass: string) => {
+    setLoginError("");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: pass })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoginError(data.error || "Erro ao efetuar login");
+      } else {
+        onLoginSuccess(data);
+      }
+    } catch (err) {
+      setLoginError("Erro na conexão com o servidor.");
+    }
+  };
+
   // Handle Registration
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,10 +391,27 @@ export default function CustomerArea({
                 <button type="submit" className="mimos-btn-primary w-full flex items-center justify-center gap-2 mt-4">
                   <LogIn className="w-4 h-4" /> Entrar na minha Conta
                 </button>
-                <div className="text-center text-xs text-stone-400 mt-4">
-                  Credenciais de demonstração:<br />
-                  Cliente: <b>mariana@gmail.com</b> / <b>cliente123</b><br />
-                  Admin: <b>admin@mimosnaypaes.com.br</b> / <b>admin123</b>
+
+                <div className="mt-6 pt-6 border-t border-beige-100 space-y-3">
+                  <p className="text-center text-xs font-bold text-stone-500 uppercase tracking-wider">Acesso Rápido de Demonstração</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickLogin("admin@mimosnaypaes.com.br", "admin123")}
+                      className="px-3 py-2 bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-lg text-xs font-semibold hover:from-stone-800 hover:to-stone-700 transition cursor-pointer flex flex-col items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span>Entrar como</span>
+                      <span className="text-[10px] text-gold-400 font-bold uppercase">Administrador 🔑</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickLogin("mariana@gmail.com", "cliente123")}
+                      className="px-3 py-2 bg-gradient-to-r from-gold-100 to-beige-100 text-stone-800 border border-gold-200 rounded-lg text-xs font-semibold hover:bg-gold-200/50 transition cursor-pointer flex flex-col items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span>Entrar como</span>
+                      <span className="text-[10px] text-rose-500 font-bold uppercase">Cliente 🌸</span>
+                    </button>
+                  </div>
                 </div>
               </form>
             ) : (
