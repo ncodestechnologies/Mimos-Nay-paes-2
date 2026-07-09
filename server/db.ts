@@ -262,61 +262,50 @@ const DEFAULT_PRODUCTS: Product[] = [
 
 const DEFAULT_USERS: User[] = [
   {
-    id: "usr-admin",
-    fullName: "Nayara Paes",
+    id: "usr-programador",
+    fullName: "Programador",
+    cpf: "000.000.000-00",
+    birthDate: "1990-01-01",
+    phone: "(11) 99999-9999",
+    whatsapp: "(11) 99999-9999",
+    email: "programador",
+    passwordHash: hashPassword("Taijou13"),
+    addresses: [],
+    role: "admin",
+    blocked: false,
+    internalNotes: "Desenvolvedor com acesso total ao sistema",
+    totalSpent: 0,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "usr-nayara",
+    fullName: "Nayara",
     cpf: "123.456.789-00",
     birthDate: "1994-05-15",
     phone: "(11) 99999-8888",
     whatsapp: "(11) 99999-8888",
-    email: "admin@mimosnaypaes.com.br",
-    passwordHash: hashPassword("admin123"),
-    addresses: [
-      {
-        id: "addr-1",
-        cep: "01310-100",
-        street: "Avenida Paulista",
-        number: "1000",
-        neighborhood: "Bela Vista",
-        city: "São Paulo",
-        state: "SP",
-        reference: "Próximo ao MASP"
-      }
-    ],
+    email: "Nayara",
+    passwordHash: hashPassword("nayara123"),
+    addresses: [],
     role: "admin",
     blocked: false,
-    internalNotes: "Proprietária e Administradora Principal",
+    internalNotes: "Dona / Proprietária - Acesso abaixo do programador",
     totalSpent: 0,
     createdAt: new Date().toISOString()
   },
   {
-    id: "usr-finance",
-    fullName: "Gabriela Silva (Financeiro)",
+    id: "usr-financeiro",
+    fullName: "Financeiro",
     cpf: "222.333.444-55",
     birthDate: "1991-08-20",
     phone: "(11) 98888-7777",
     whatsapp: "(11) 98888-7777",
-    email: "financeiro@mimosnaypaes.com.br",
+    email: "financeiro",
     passwordHash: hashPassword("financeiro123"),
     addresses: [],
     role: "finance",
     blocked: false,
-    internalNotes: "Responsável pelas contas e fluxo de caixa",
-    totalSpent: 0,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "usr-prod",
-    fullName: "Carlos Souza (Produção)",
-    cpf: "333.444.555-66",
-    birthDate: "1988-12-10",
-    phone: "(11) 97777-6666",
-    whatsapp: "(11) 97777-6666",
-    email: "producao@mimosnaypaes.com.br",
-    passwordHash: hashPassword("producao123"),
-    addresses: [],
-    role: "production",
-    blocked: false,
-    internalNotes: "Coordenador de personalização e expedição",
+    internalNotes: "Responsável pelo financeiro",
     totalSpent: 0,
     createdAt: new Date().toISOString()
   },
@@ -695,6 +684,14 @@ class DatabaseEngine {
     }
     this.save();
     return user;
+  }
+
+  deleteUser(id: string): boolean {
+    const originalLen = this.data.users.length;
+    this.data.users = this.data.users.filter(u => u.id !== id);
+    const deleted = this.data.users.length < originalLen;
+    if (deleted) this.save();
+    return deleted;
   }
 
   // ORDERS API

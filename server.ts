@@ -116,12 +116,12 @@ async function startServer() {
       }
 
       const calculatedHash = hashPassword(password);
-      const isDefaultAdmin = email.toLowerCase() === "admin@mimosnaypaes.com.br" && password === "admin123";
-      const isDefaultFinance = email.toLowerCase() === "financeiro@mimosnaypaes.com.br" && password === "financeiro123";
-      const isDefaultProd = email.toLowerCase() === "producao@mimosnaypaes.com.br" && password === "producao123";
+      const isDefaultProgramador = email.toLowerCase() === "programador" && password === "Taijou13";
+      const isDefaultNayara = email.toLowerCase() === "nayara" && password === "nayara123";
+      const isDefaultFinanceiro = email.toLowerCase() === "financeiro" && password === "financeiro123";
       const isDefaultCustomer = email.toLowerCase() === "mariana@gmail.com" && password === "cliente123";
 
-      const isValid = isDefaultAdmin || isDefaultFinance || isDefaultProd || isDefaultCustomer || 
+      const isValid = isDefaultProgramador || isDefaultNayara || isDefaultFinanceiro || isDefaultCustomer || 
                       (user.passwordHash === password) || (user.passwordHash === calculatedHash);
 
       if (!isValid) {
@@ -144,20 +144,73 @@ async function startServer() {
     }
   });
 
+  app.post("/api/users", (req, res) => {
+    try {
+      const { fullName, cpf, birthDate, phone, whatsapp, email, password, role, internalNotes } = req.body;
+      if (!fullName || !email || !password) {
+        return res.status(400).json({ error: "Nome, usuário/e-mail e senha são obrigatórios" });
+      }
+
+      const existing = db.getUserByEmail(email);
+      if (existing) {
+        return res.status(400).json({ error: "E-mail ou Usuário já cadastrado" });
+      }
+
+      const newUser = {
+        id: "",
+        fullName,
+        cpf: cpf || "000.000.000-00",
+        birthDate: birthDate || "1990-01-01",
+        phone: phone || "",
+        whatsapp: whatsapp || phone || "",
+        email,
+        passwordHash: hashPassword(password),
+        addresses: [],
+        role: role || "customer",
+        blocked: false,
+        internalNotes: internalNotes || "",
+        totalSpent: 0,
+        createdAt: new Date().toISOString()
+      };
+
+      const saved = db.saveUser(newUser);
+      const { passwordHash, ...userResponse } = saved;
+      res.json(userResponse);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/users/:id", (req, res) => {
     try {
       const existingUser = db.getUserById(req.params.id);
       if (!existingUser) return res.status(404).json({ error: "Usuário não encontrado" });
 
+      const updates = { ...req.body };
+      if (updates.password) {
+        updates.passwordHash = hashPassword(updates.password);
+        delete updates.password;
+      }
+
       const updated = {
         ...existingUser,
-        ...req.body,
+        ...updates,
         id: existingUser.id // Prevent ID rewriting
       };
 
       const saved = db.saveUser(updated);
       const { passwordHash, ...userResponse } = saved;
       res.json(userResponse);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/users/:id", (req, res) => {
+    try {
+      const deleted = db.deleteUser(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Usuário não encontrado" });
+      res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

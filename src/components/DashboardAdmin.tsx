@@ -25,8 +25,12 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Simulating active session role bypass for demonstration/testing ease
-  const [activeRole, setActiveRole] = useState<AdminRole>("admin");
+  const [activeRole, setActiveRole] = useState<AdminRole>(() => {
+    if (currentUser && currentUser.role !== "customer") {
+      return currentUser.role as AdminRole;
+    }
+    return "admin";
+  });
   const [currentTab, setCurrentTab] = useState<"visao-geral" | "produtos" | "clientes" | "financeiro" | "producao" | "estoque" | "relatorios" | "galeria">("visao-geral");
 
   // Core collections synced from server
@@ -51,6 +55,21 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
   const [editingFinance, setEditingFinance] = useState<Partial<FinanceEntry> | null>(null);
   const [showFinanceForm, setShowFinanceForm] = useState(false);
   const [selectedClient, setSelectedClient] = useState<User | null>(null);
+
+  // Programador - Registration control states
+  const [cadastroTypeFilter, setCadastroTypeFilter] = useState<"todos" | "clientes" | "equipe">("todos");
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    role: "customer" as "admin" | "finance" | "production" | "atendimento" | "customer",
+    cpf: "",
+    phone: "",
+    birthDate: "",
+    internalNotes: ""
+  });
+  const [editingUserPassword, setEditingUserPassword] = useState("");
 
   // Gallery Form States
   const [showGalleryForm, setShowGalleryForm] = useState(false);
@@ -266,13 +285,13 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
             )}
 
             <div>
-              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">E-mail Corporativo</label>
+              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">Usuário ou E-mail</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3.5 text-stone-400 w-4 h-4" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  placeholder="admin@mimosnaypaes.com.br"
+                  placeholder="Ex: programador, Nayara, financeiro..."
                   className="mimos-input pl-10 py-2.5 text-xs"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
@@ -397,6 +416,88 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
     }
   };
 
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserForm.fullName || !newUserForm.email || !newUserForm.password) {
+      alert("Nome, usuário/e-mail e senha são obrigatórios!");
+      return;
+    }
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUserForm)
+      });
+      if (res.ok) {
+        setShowUserForm(false);
+        setNewUserForm({
+          fullName: "",
+          email: "",
+          password: "",
+          role: "customer",
+          cpf: "",
+          phone: "",
+          birthDate: "",
+          internalNotes: ""
+        });
+        loadAdminData();
+        alert("Cadastro de usuário realizado com sucesso!");
+      } else {
+        const errData = await res.json();
+        alert(`Erro ao cadastrar: ${errData.error || "Tente novamente."}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro na conexão ao cadastrar usuário.");
+    }
+  };
+
+  const handleUserDelete = async (id: string) => {
+    if (id === currentUser?.id) {
+      alert("Você não pode deletar a si mesmo!");
+      return;
+    }
+    if (!window.confirm("Deseja realmente remover este cadastro definitivamente do sistema?")) return;
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        setSelectedClient(null);
+        loadAdminData();
+        alert("Cadastro excluído com sucesso!");
+      } else {
+        alert("Erro ao excluir usuário.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUserUpdateSubmit = async (client: User, updates: Partial<User>) => {
+    try {
+      const body: any = { ...updates };
+      if (editingUserPassword) {
+        body.password = editingUserPassword;
+      }
+      const res = await fetch(`/api/users/${client.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        setEditingUserPassword("");
+        loadAdminData();
+        setSelectedClient(null);
+        alert("Cadastro atualizado com sucesso!");
+      } else {
+        alert("Erro ao atualizar cadastro.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // FINANCE ACTION SUBMISSION
   const handleFinanceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -504,34 +605,27 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
   };
 
   const filteredProducts = allProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.categories.some(c => c.toLowerCase().includes(productSearch.toLowerCase())));
-  const filteredClients = users.filter(u => u.role === "customer" && (u.fullName.toLowerCase().includes(clientSearch.toLowerCase()) || u.cpf.includes(clientSearch)));
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.fullName.toLowerCase().includes(clientSearch.toLowerCase()) || 
+                          u.cpf.includes(clientSearch) || 
+                          u.email.toLowerCase().includes(clientSearch.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (currentUser?.email.toLowerCase() !== "programador") {
+      return u.role === "customer";
+    }
+
+    if (cadastroTypeFilter === "clientes") {
+      return u.role === "customer";
+    } else if (cadastroTypeFilter === "equipe") {
+      return u.role !== "customer";
+    }
+    return true;
+  });
   const filteredFinance = finance.filter(f => financeTypeFilter === "todos" ? true : f.type === financeTypeFilter);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Role Switcher Demo Bar */}
-      <div className="bg-stone-800 text-white p-4 rounded-2xl mb-8 flex flex-col md:flex-row justify-between items-center gap-4 shadow-md">
-        <div>
-          <span className="text-xs bg-gold-400 text-stone-900 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Painel Multidepartamental</span>
-          <h2 className="font-sans font-semibold text-sm mt-1">Ambiente de Demonstração: Simule Perfis para Testar as Permissões</h2>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {(["admin", "finance", "production", "atendimento"] as AdminRole[]).map((role) => (
-            <button
-              key={role}
-              onClick={() => { setActiveRole(role); }}
-              className={`px-3 py-1.5 rounded text-xs font-semibold cursor-pointer transition ${
-                activeRole === role 
-                  ? "bg-gold-400 text-stone-900 shadow" 
-                  : "bg-stone-700 hover:bg-stone-600 text-stone-300"
-              }`}
-            >
-              {role.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* SIDEBAR NAVIGATION */}
         <div className="lg:col-span-3 bg-white border border-beige-200 rounded-2xl p-4 shadow-sm space-y-1.5">
@@ -542,7 +636,19 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
               </div>
               <div className="overflow-hidden">
                 <p className="text-xs font-semibold text-stone-800 truncate">{currentUser.fullName}</p>
-                <p className="text-[10px] text-stone-500 uppercase font-mono font-bold tracking-wider">{activeRole}</p>
+                <p className="text-[10px] text-stone-500 uppercase font-mono font-bold tracking-wider">
+                  {currentUser.email.toLowerCase() === "programador" 
+                    ? "Desenvolvedor (Acesso Total)" 
+                    : currentUser.email.toLowerCase() === "nayara" 
+                    ? "Dona (Acesso Administrativo)" 
+                    : activeRole === "finance" 
+                    ? "Financeiro" 
+                    : activeRole === "production" 
+                    ? "Produção" 
+                    : activeRole === "atendimento" 
+                    ? "Atendimento" 
+                    : "Administrador"}
+                </p>
               </div>
             </div>
           )}
@@ -573,7 +679,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
               currentTab === "clientes" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
             }`}
           >
-            <Users className="w-4 h-4" /> Gestão de Clientes
+            <Users className="w-4 h-4" /> {currentUser?.email.toLowerCase() === "programador" ? "Gestão de Cadastros" : "Gestão de Clientes"}
           </button>
 
           <button
@@ -993,20 +1099,176 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
             </div>
           )}
 
-          {/* TAB 3: CLIENTS DIRECTORY */}
+          {/* TAB 3: CLIENTS & REGISTRATION DIRECTORY */}
           {currentTab === "clientes" && hasAccess(["admin", "atendimento"]) && (
             <div className="space-y-6">
-              <div className="border-b border-beige-100 pb-4">
-                <h3 className="font-display text-2xl text-stone-800 font-semibold">Diretório de Clientes</h3>
-                <p className="text-stone-500 text-xs">Consulte informações de CPF, endereços cadastrados, total investido no site e notas de acompanhamento.</p>
+              <div className="border-b border-beige-100 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h3 className="font-display text-2xl text-stone-800 font-semibold">
+                    {currentUser?.email.toLowerCase() === "programador" 
+                      ? "Gestão Geral de Cadastros (Equipe & Clientes)" 
+                      : "Diretório de Clientes"}
+                  </h3>
+                  <p className="text-stone-500 text-xs">
+                    {currentUser?.email.toLowerCase() === "programador"
+                      ? "Painel de controle de acessos, credenciais de equipe e diretório de clientes cadastrados no sistema."
+                      : "Consulte informações de CPF, endereços cadastrados, total investido no site e notas de acompanhamento."}
+                  </p>
+                </div>
+                {currentUser?.email.toLowerCase() === "programador" && (
+                  <button
+                    onClick={() => { setShowUserForm(!showUserForm); setSelectedClient(null); }}
+                    className="mimos-btn-primary py-1.5 px-4 text-xs flex items-center gap-1.5 justify-center w-full sm:w-auto cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> {showUserForm ? "Cancelar" : "Novo Usuário / Equipe"}
+                  </button>
+                )}
               </div>
+
+              {/* NEW USER FORM (ONLY FOR PROGRAMADOR) */}
+              {showUserForm && currentUser?.email.toLowerCase() === "programador" && (
+                <div className="bg-beige-50 p-6 rounded-2xl border border-gold-200 space-y-4 shadow-sm">
+                  <h4 className="font-display text-lg text-stone-800 font-semibold">Cadastrar Novo Usuário ou Colaborador</h4>
+                  <form onSubmit={handleCreateUserSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1">Nome Completo *</label>
+                        <input
+                          type="text"
+                          required
+                          className="mimos-input text-xs"
+                          placeholder="Ex: Amanda Souza"
+                          value={newUserForm.fullName}
+                          onChange={(e) => setNewUserForm({ ...newUserForm, fullName: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1">Usuário / E-mail de Login *</label>
+                        <input
+                          type="text"
+                          required
+                          className="mimos-input text-xs"
+                          placeholder="Ex: amanda.financeiro ou amanda@mimos.com"
+                          value={newUserForm.email}
+                          onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1">Senha de Acesso *</label>
+                        <input
+                          type="password"
+                          required
+                          className="mimos-input text-xs"
+                          placeholder="Mínimo 6 caracteres"
+                          value={newUserForm.password}
+                          onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1">Cargo / Permissão de Acesso *</label>
+                        <select
+                          className="mimos-input text-xs"
+                          value={newUserForm.role}
+                          onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as any })}
+                        >
+                          <option value="customer">Cliente (customer)</option>
+                          <option value="admin">Administrador Geral / Dono (admin)</option>
+                          <option value="finance">Financeiro (finance)</option>
+                          <option value="production">Fila de Produção (production)</option>
+                          <option value="atendimento">Atendimento Comercial (atendimento)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1">CPF (opcional)</label>
+                        <input
+                          type="text"
+                          className="mimos-input text-xs"
+                          placeholder="000.000.000-00"
+                          value={newUserForm.cpf}
+                          onChange={(e) => setNewUserForm({ ...newUserForm, cpf: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1">Telefone / WhatsApp (opcional)</label>
+                        <input
+                          type="text"
+                          className="mimos-input text-xs"
+                          placeholder="(11) 99999-9999"
+                          value={newUserForm.phone}
+                          onChange={(e) => setNewUserForm({ ...newUserForm, phone: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1">Data Nascimento (opcional)</label>
+                        <input
+                          type="date"
+                          className="mimos-input text-xs"
+                          value={newUserForm.birthDate}
+                          onChange={(e) => setNewUserForm({ ...newUserForm, birthDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-700 mb-1">Notas Internas / Observações</label>
+                      <textarea
+                        rows={2}
+                        className="mimos-input text-xs"
+                        placeholder="Ex: Responsável por conferir as faturas, contratado em..."
+                        value={newUserForm.internalNotes}
+                        onChange={(e) => setNewUserForm({ ...newUserForm, internalNotes: e.target.value })}
+                      ></textarea>
+                    </div>
+
+                    <div className="flex gap-4 justify-end pt-2">
+                      <button
+                        type="button"
+                        onClick={() => { setShowUserForm(false); }}
+                        className="mimos-btn-secondary text-xs py-1.5 cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="mimos-btn-primary text-xs py-1.5 cursor-pointer"
+                      >
+                        Confirmar Cadastro 🚀
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* PROGRAMADOR TYPE FILTERS */}
+              {currentUser?.email.toLowerCase() === "programador" && (
+                <div className="flex flex-wrap gap-2 border-b border-beige-100 pb-2">
+                  {(["todos", "clientes", "equipe"] as const).map(type => (
+                    <button
+                      key={type}
+                      onClick={() => { setCadastroTypeFilter(type); setSelectedClient(null); }}
+                      className={`px-4 py-1.5 text-xs font-bold rounded cursor-pointer transition uppercase tracking-wider ${
+                        cadastroTypeFilter === type 
+                          ? "bg-stone-900 text-gold-400 border border-stone-900" 
+                          : "bg-beige-50 text-stone-600 hover:bg-beige-100 border border-transparent"
+                      }`}
+                    >
+                      {type === "todos" ? "Todos os Cadastros" : type === "clientes" ? "Clientes" : "Equipe / Colaboradores"}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Search clients bar */}
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 text-stone-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Pesquisar por nome de cliente ou CPF..."
+                  placeholder={currentUser?.email.toLowerCase() === "programador" 
+                    ? "Pesquisar por nome, usuário, e-mail ou CPF..." 
+                    : "Pesquisar por nome de cliente ou CPF..."}
                   className="mimos-input pl-10 py-2 text-sm"
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
@@ -1017,71 +1279,252 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
               {selectedClient && (
                 <div className="bg-beige-50 p-6 rounded-2xl border border-beige-200 space-y-4 text-sm">
                   <div className="flex justify-between items-center border-b border-beige-300 pb-2">
-                    <h4 className="font-display font-semibold text-stone-800">Notas & Gestão: {selectedClient.fullName}</h4>
-                    <button onClick={() => setSelectedClient(null)} className="text-xs text-stone-400 hover:text-stone-700">Fechar</button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <p><b>CPF:</b> {selectedClient.cpf}</p>
-                    <p><b>RG:</b> {selectedClient.rg || "Não preenchido"}</p>
-                    <p><b>Aniversário:</b> {selectedClient.birthDate}</p>
-                    <p><b>Telefone:</b> {selectedClient.phone}</p>
-                    <p><b>E-mail:</b> {selectedClient.email}</p>
-                    <p><b>Cadastrado em:</b> {new Date(selectedClient.createdAt).toLocaleDateString("pt-BR")}</p>
+                    <h4 className="font-display font-semibold text-stone-800">
+                      {currentUser?.email.toLowerCase() === "programador" 
+                        ? `Gestão de Cadastro: ${selectedClient.fullName}` 
+                        : `Notas & Gestão: ${selectedClient.fullName}`}
+                    </h4>
+                    <button onClick={() => { setSelectedClient(null); setEditingUserPassword(""); }} className="text-xs text-stone-400 hover:text-stone-700 cursor-pointer">Fechar</button>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">Notas Internas de Atendimento (Exclusivo Equipe)</label>
-                    <textarea
-                      rows={3}
-                      className="mimos-input text-xs"
-                      placeholder="Anote detalhes de preferência de fitas, restrições, etc..."
-                      value={selectedClient.internalNotes || ""}
-                      onChange={(e) => setSelectedClient({ ...selectedClient, internalNotes: e.target.value })}
-                    ></textarea>
-                  </div>
+                  {currentUser?.email.toLowerCase() === "programador" ? (
+                    /* PROGRAMADOR RICH USER EDIT FORM */
+                    <form onSubmit={(e) => { e.preventDefault(); handleUserUpdateSubmit(selectedClient, selectedClient); }} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 mb-1">Nome Completo</label>
+                          <input
+                            type="text"
+                            required
+                            className="mimos-input text-xs"
+                            value={selectedClient.fullName}
+                            onChange={(e) => setSelectedClient({ ...selectedClient, fullName: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 mb-1">Usuário / E-mail de Login</label>
+                          <input
+                            type="text"
+                            required
+                            className="mimos-input text-xs"
+                            value={selectedClient.email}
+                            onChange={(e) => setSelectedClient({ ...selectedClient, email: e.target.value })}
+                          />
+                        </div>
+                      </div>
 
-                  <div className="flex gap-4 justify-between items-center pt-2">
-                    <button
-                      onClick={() => handleClientUpdate(selectedClient, { blocked: !selectedClient.blocked, internalNotes: selectedClient.internalNotes })}
-                      className={`px-4 py-1.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer ${
-                        selectedClient.blocked ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-red-50 text-red-700 hover:bg-red-100"
-                      }`}
-                    >
-                      <Ban className="w-3.5 h-3.5" /> {selectedClient.blocked ? "Desbloquear Cliente" : "Bloquear Cliente"}
-                    </button>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 mb-1">CPF</label>
+                          <input
+                            type="text"
+                            className="mimos-input text-xs"
+                            value={selectedClient.cpf || ""}
+                            onChange={(e) => setSelectedClient({ ...selectedClient, cpf: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 mb-1">Telefone / WhatsApp</label>
+                          <input
+                            type="text"
+                            className="mimos-input text-xs"
+                            value={selectedClient.whatsapp || ""}
+                            onChange={(e) => setSelectedClient({ ...selectedClient, whatsapp: e.target.value, phone: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 mb-1">Data Nascimento</label>
+                          <input
+                            type="date"
+                            className="mimos-input text-xs"
+                            value={selectedClient.birthDate || ""}
+                            onChange={(e) => setSelectedClient({ ...selectedClient, birthDate: e.target.value })}
+                          />
+                        </div>
+                      </div>
 
-                    <button
-                      onClick={() => handleClientUpdate(selectedClient, { internalNotes: selectedClient.internalNotes })}
-                      className="mimos-btn-primary py-1.5 text-xs px-4"
-                    >
-                      Salvar Observações
-                    </button>
-                  </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 mb-1">
+                            Alterar Cargo / Nível de Acesso {selectedClient.email.toLowerCase() === "programador" && "(Bloqueado para Desenvolvedor)"}
+                          </label>
+                          <select
+                            className="mimos-input text-xs"
+                            disabled={selectedClient.email.toLowerCase() === "programador"}
+                            value={selectedClient.role}
+                            onChange={(e) => setSelectedClient({ ...selectedClient, role: e.target.value as any })}
+                          >
+                            <option value="customer">Cliente (customer)</option>
+                            <option value="admin">Administrador Geral / Dono (admin)</option>
+                            <option value="finance">Financeiro (finance)</option>
+                            <option value="production">Fila de Produção (production)</option>
+                            <option value="atendimento">Atendimento Comercial (atendimento)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 mb-1">Redefinir Senha (deixe vazio para manter)</label>
+                          <input
+                            type="password"
+                            placeholder="Definir nova senha para este cadastro..."
+                            className="mimos-input text-xs"
+                            value={editingUserPassword}
+                            onChange={(e) => setEditingUserPassword(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1">Notas Internas e de Atendimento</label>
+                        <textarea
+                          rows={3}
+                          className="mimos-input text-xs"
+                          placeholder="Anote observações sobre este colaborador ou preferências específicas do cliente..."
+                          value={selectedClient.internalNotes || ""}
+                          onChange={(e) => setSelectedClient({ ...selectedClient, internalNotes: e.target.value })}
+                        ></textarea>
+                      </div>
+
+                      <div className="flex gap-4 justify-between items-center pt-2 border-t border-beige-200 mt-4">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleClientUpdate(selectedClient, { blocked: !selectedClient.blocked, internalNotes: selectedClient.internalNotes })}
+                            className={`px-4 py-1.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition ${
+                              selectedClient.blocked ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-red-50 text-red-700 hover:bg-red-100"
+                            }`}
+                          >
+                            <Ban className="w-3.5 h-3.5" /> {selectedClient.blocked ? "Desbloquear Usuário" : "Bloquear Usuário"}
+                          </button>
+
+                          {selectedClient.email.toLowerCase() !== "programador" && (
+                            <button
+                              type="button"
+                              onClick={() => handleUserDelete(selectedClient.id)}
+                              className="px-4 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Excluir Cadastro
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedClient(null); setEditingUserPassword(""); }}
+                            className="mimos-btn-secondary py-1.5 text-xs px-4"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="submit"
+                            className="mimos-btn-primary py-1.5 text-xs px-4"
+                          >
+                            Salvar Alterações 💾
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  ) : (
+                    /* NAYARA / STANDARD STAFF COMPACT VIEW */
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <p><b>CPF:</b> {selectedClient.cpf}</p>
+                        <p><b>RG:</b> {selectedClient.rg || "Não preenchido"}</p>
+                        <p><b>Aniversário:</b> {selectedClient.birthDate}</p>
+                        <p><b>Telefone:</b> {selectedClient.phone}</p>
+                        <p><b>E-mail:</b> {selectedClient.email}</p>
+                        <p><b>Cadastrado em:</b> {new Date(selectedClient.createdAt).toLocaleDateString("pt-BR")}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1">Notas Internas de Atendimento (Exclusivo Equipe)</label>
+                        <textarea
+                          rows={3}
+                          className="mimos-input text-xs"
+                          placeholder="Anote detalhes de preferência de fitas, restrições, etc..."
+                          value={selectedClient.internalNotes || ""}
+                          onChange={(e) => setSelectedClient({ ...selectedClient, internalNotes: e.target.value })}
+                        ></textarea>
+                      </div>
+
+                      <div className="flex gap-4 justify-between items-center pt-2">
+                        <button
+                          onClick={() => handleClientUpdate(selectedClient, { blocked: !selectedClient.blocked, internalNotes: selectedClient.internalNotes })}
+                          className={`px-4 py-1.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer ${
+                            selectedClient.blocked ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-red-50 text-red-700 hover:bg-red-100"
+                          }`}
+                        >
+                          <Ban className="w-3.5 h-3.5" /> {selectedClient.blocked ? "Desbloquear Cliente" : "Bloquear Cliente"}
+                        </button>
+
+                        <button
+                          onClick={() => handleClientUpdate(selectedClient, { internalNotes: selectedClient.internalNotes })}
+                          className="mimos-btn-primary py-1.5 text-xs px-4"
+                        >
+                          Salvar Observações
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
-              {/* CLIENTS LIST TABLE */}
+              {/* LIST TABLE OF GENERAL REGISTRATIONS */}
               <div className="overflow-x-auto rounded-xl border border-beige-100">
                 <table className="w-full text-left text-sm border-collapse">
                   <thead className="bg-beige-50 text-stone-700 font-sans text-xs">
                     <tr>
-                      <th className="p-3">Cliente</th>
+                      <th className="p-3">Cadastro / Usuário</th>
+                      {currentUser?.email.toLowerCase() === "programador" && <th className="p-3">Cargo / Permissão</th>}
                       <th className="p-3">WhatsApp / Telefone</th>
-                      <th className="p-3">Gasto Total</th>
+                      <th className="p-3">Gasto no Site</th>
                       <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Notas Internas</th>
+                      <th className="p-3 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-beige-100 text-stone-600">
-                    {filteredClients.map((c) => (
+                    {filteredUsers.map((c) => (
                       <tr key={c.id} className="hover:bg-beige-50/50">
                         <td className="p-3">
                           <span className="font-semibold text-stone-800 text-xs block">{c.fullName}</span>
-                          <span className="text-[10px] text-stone-400 block">{c.email}</span>
+                          <span className="text-[10px] text-stone-400 block font-mono">{c.email}</span>
                         </td>
-                        <td className="p-3 text-xs">{c.whatsapp}</td>
+                        {currentUser?.email.toLowerCase() === "programador" && (
+                          <td className="p-3">
+                            <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${
+                              c.email.toLowerCase() === "programador"
+                                ? "bg-violet-50 text-violet-700 border-violet-200"
+                                : c.email.toLowerCase() === "nayara"
+                                ? "bg-pink-50 text-pink-700 border-pink-200"
+                                : c.role === "admin"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : c.role === "finance"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : c.role === "production"
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : c.role === "atendimento"
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : "bg-stone-50 text-stone-600 border-stone-200"
+                            }`}>
+                              {c.email.toLowerCase() === "programador"
+                                ? "Desenvolvedor"
+                                : c.email.toLowerCase() === "nayara"
+                                ? "Dona"
+                                : c.role === "admin"
+                                ? "Administrador"
+                                : c.role === "finance"
+                                ? "Financeiro"
+                                : c.role === "production"
+                                ? "Produção"
+                                : c.role === "atendimento"
+                                ? "Atendimento"
+                                : "Cliente"}
+                            </span>
+                          </td>
+                        )}
+                        <td className="p-3 text-xs">{c.whatsapp || c.phone || "—"}</td>
                         <td className="p-3 text-xs font-bold text-stone-800">
-                          {c.totalSpent.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          {c.totalSpent ? c.totalSpent.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}
                         </td>
                         <td className="p-3">
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${c.blocked ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
@@ -1090,7 +1533,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
                         </td>
                         <td className="p-3 text-right">
                           <button
-                            onClick={() => setSelectedClient(c)}
+                            onClick={() => { setSelectedClient(c); setEditingUserPassword(""); }}
                             className="text-xs text-gold-600 font-semibold hover:underline flex items-center gap-1 justify-end ml-auto cursor-pointer"
                           >
                             <Edit className="w-3.5 h-3.5" /> Detalhar / Editar
