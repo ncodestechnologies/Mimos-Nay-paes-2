@@ -52,6 +52,9 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingStock, setEditingStock] = useState<Partial<StockItem> | null>(null);
   const [showStockForm, setShowStockForm] = useState(false);
+  const [quickStockAction, setQuickStockAction] = useState<{ item: StockItem; type: "entrada" | "saida" } | null>(null);
+  const [quickStockQty, setQuickStockQty] = useState<number>(1);
+  const [quickStockReason, setQuickStockReason] = useState<string>("");
   const [editingFinance, setEditingFinance] = useState<Partial<FinanceEntry> | null>(null);
   const [showFinanceForm, setShowFinanceForm] = useState(false);
   const [selectedClient, setSelectedClient] = useState<User | null>(null);
@@ -575,6 +578,41 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
       if (res.ok) {
         setShowStockForm(false);
         setEditingStock(null);
+        loadAdminData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // QUICK STOCK QUANTITY ADDTION / REMOVAL
+  const handleQuickStockSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickStockAction) return;
+    const { item, type } = quickStockAction;
+    if (quickStockQty <= 0) return;
+
+    const newQuantity = type === "entrada" 
+      ? item.quantity + quickStockQty 
+      : Math.max(0, item.quantity - quickStockQty);
+
+    try {
+      const res = await fetch("/api/stock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: item.id,
+          name: item.name,
+          quantity: newQuantity,
+          minQuantity: item.minQuantity,
+          unit: item.unit,
+          reason: quickStockReason || (type === "entrada" ? "Entrada rápida" : "Saída rápida")
+        })
+      });
+      if (res.ok) {
+        setQuickStockAction(null);
+        setQuickStockQty(1);
+        setQuickStockReason("");
         loadAdminData();
       }
     } catch (err) {
@@ -1931,9 +1969,10 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
                     <tr>
                       <th className="p-3">Material</th>
                       <th className="p-3">Saldo Atual</th>
+                      <th className="p-3 text-center">Movimentação Rápida</th>
                       <th className="p-3">Qtd Mínima</th>
                       <th className="p-3">Unidade</th>
-                      <th className="p-3 text-right">Editar Ficha</th>
+                      <th className="p-3 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-beige-100 text-stone-600">
@@ -1944,6 +1983,24 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
                           <span className={`font-bold ${item.quantity <= item.minQuantity ? "text-rose-600" : "text-stone-800"}`}>
                             {item.quantity}
                           </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="inline-flex rounded-md shadow-sm" role="group">
+                            <button
+                              onClick={() => { setQuickStockAction({ item, type: "entrada" }); setQuickStockQty(1); setQuickStockReason(""); }}
+                              className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-l-md hover:bg-emerald-100 transition cursor-pointer flex items-center gap-1"
+                              title="Adicionar itens ao estoque (Entrada)"
+                            >
+                              <Plus className="w-3 h-3" /> Entrada
+                            </button>
+                            <button
+                              onClick={() => { setQuickStockAction({ item, type: "saida" }); setQuickStockQty(1); setQuickStockReason(""); }}
+                              className="px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border-t border-b border-r border-rose-200 rounded-r-md hover:bg-rose-100 transition cursor-pointer flex items-center gap-1"
+                              title="Remover itens do estoque (Saída)"
+                            >
+                              <span className="text-base leading-3 font-bold">-</span> Saída
+                            </button>
+                          </div>
                         </td>
                         <td className="p-3 text-xs">{item.minQuantity}</td>
                         <td className="p-3 text-xs font-medium uppercase">{item.unit}</td>
@@ -1959,6 +2016,148 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* QUICK STOCK MOVEMENT MODAL */}
+              {quickStockAction && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                  <div className="bg-white rounded-3xl border border-beige-200 max-w-md w-full p-6 shadow-xl space-y-4">
+                    <div className="flex justify-between items-center border-b border-beige-100 pb-3">
+                      <h3 className="font-display text-lg text-stone-800 font-bold flex items-center gap-2">
+                        {quickStockAction.type === "entrada" ? (
+                          <span className="text-emerald-600 flex items-center gap-1">
+                            <Plus className="w-5 h-5" /> Lançar Entrada de Material
+                          </span>
+                        ) : (
+                          <span className="text-rose-600 flex items-center gap-1">
+                            <span className="text-xl font-bold leading-none">-</span> Lançar Saída / Baixa
+                          </span>
+                        )}
+                      </h3>
+                      <button
+                        onClick={() => setQuickStockAction(null)}
+                        className="text-stone-400 hover:text-stone-600 transition cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="bg-beige-50 p-4 rounded-2xl border border-beige-100 space-y-1">
+                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">Item de Estoque</p>
+                      <p className="text-sm font-semibold text-stone-800">{quickStockAction.item.name}</p>
+                      <p className="text-xs text-stone-600">Saldo Atual: <b className="text-stone-800">{quickStockAction.item.quantity} {quickStockAction.item.unit}</b></p>
+                    </div>
+
+                    <form onSubmit={handleQuickStockSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1.5">
+                          Quantidade a {quickStockAction.type === "entrada" ? "adicionar" : "remover"} ({quickStockAction.item.unit}) *
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setQuickStockQty(prev => Math.max(1, prev - 1))}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-beige-100 hover:bg-beige-200 text-stone-700 font-bold text-lg transition cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            required
+                            value={quickStockQty}
+                            onChange={(e) => setQuickStockQty(Math.max(1, Number(e.target.value)))}
+                            className="mimos-input py-2 text-center text-sm font-semibold flex-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQuickStockQty(prev => prev + 1)}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-beige-100 hover:bg-beige-200 text-stone-700 font-bold text-lg transition cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1.5">
+                          Motivo / Justificativa *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder={quickStockAction.type === "entrada" ? "Ex: Compra de lote, devolução de sobra" : "Ex: Uso para montagem de mimos, desperdício"}
+                          value={quickStockReason}
+                          onChange={(e) => setQuickStockReason(e.target.value)}
+                          className="mimos-input py-2 text-xs"
+                        />
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setQuickStockAction(null)}
+                          className="mimos-btn-secondary py-2 text-xs w-1/2 cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className={`py-2 text-xs w-1/2 font-semibold text-white rounded-xl shadow-sm transition cursor-pointer ${
+                            quickStockAction.type === "entrada" 
+                              ? "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800" 
+                              : "bg-rose-600 hover:bg-rose-700 active:bg-rose-800"
+                          }`}
+                        >
+                          Confirmar {quickStockAction.type === "entrada" ? "Entrada" : "Saída"}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* STOCK HISTORY LOGGER LOG */}
+              <div className="bg-beige-50/50 p-6 rounded-2xl border border-beige-200 mt-8 space-y-4">
+                <div className="flex justify-between items-center border-b border-beige-200 pb-2">
+                  <h4 className="font-display text-base font-semibold text-stone-800 flex items-center gap-1.5">
+                    <ClipboardList className="w-4 h-4 text-gold-600" /> Histórico de Movimentações Recentes
+                  </h4>
+                  <span className="text-[10px] text-stone-400 font-mono">Movimentações de Estoque</span>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto divide-y divide-beige-100 space-y-3 pr-2">
+                  {stock.flatMap(item => 
+                    (item.history || []).map(hist => ({
+                      ...hist,
+                      materialName: item.name,
+                      unit: item.unit
+                    }))
+                  )
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .slice(0, 15)
+                  .map((log, index) => (
+                    <div key={index} className="pt-3 first:pt-0 flex justify-between items-start gap-4 text-xs">
+                      <div className="space-y-0.5">
+                        <span className="font-semibold text-stone-800">{log.materialName}</span>
+                        <p className="text-stone-500 text-[11px]">{log.reason}</p>
+                        <span className="text-[10px] text-stone-400 block">{new Date(log.date).toLocaleDateString("pt-BR")}</span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] uppercase border ${
+                          log.type === "entrada" 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-150" 
+                            : "bg-rose-50 text-rose-700 border-rose-150"
+                        }`}>
+                          {log.type === "entrada" ? `+${log.quantity}` : `-${log.quantity}`} {log.unit}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {stock.flatMap(item => item.history || []).length === 0 && (
+                    <p className="text-xs text-stone-400 text-center py-4">Nenhuma movimentação registrada no estoque.</p>
+                  )}
+                </div>
               </div>
             </div>
           )}
