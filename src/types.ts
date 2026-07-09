@@ -129,3 +129,12 @@ export interface StockItem {
     reason: string;
   }[];
 }
+
+export interface GalleryItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  description?: string;
+  category?: string;
+  createdAt: string;
+}

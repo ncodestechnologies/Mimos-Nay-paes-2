@@ -399,6 +399,33 @@ const DEFAULT_STOCK = [
   }
 ];
 
+const DEFAULT_GALLERY = [
+  {
+    id: "gal-1",
+    title: "Cesta de Café da Manhã Luxuosa",
+    imageUrl: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?q=80&w=800&auto=format&fit=crop",
+    description: "Uma cesta artesanal repleta de flores secas e delícias selecionadas para momentos inesquecíveis.",
+    category: "Cestas",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "gal-2",
+    title: "Caneca Porcelana Rosé Gold Gravada",
+    imageUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=800&auto=format&fit=crop",
+    description: "A queridinha do nosso ateliê com personalização metalizada sob medida.",
+    category: "Canecas",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "gal-3",
+    title: "Caixa Cartonada Preta para Padrinhos",
+    imageUrl: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800&auto=format&fit=crop",
+    description: "Embalagem elegante com fechamento em fita de cetim para presentear pessoas especiais.",
+    category: "Caixas",
+    createdAt: new Date().toISOString()
+  }
+];
+
 // LocalStorage helpers
 function getStore(key: string, defaults: any) {
   const data = localStorage.getItem(`mimos_db_${key}`);
@@ -870,6 +897,47 @@ export async function setupFetchInterceptor() {
           }
           setStore("stock", stock);
           return makeResponse(item);
+        }
+      }
+
+      // 7. GALLERY
+      if (pathname === "/api/gallery") {
+        const gallery = getStore("gallery", DEFAULT_GALLERY);
+        if (method === "GET") {
+          return makeResponse(gallery);
+        }
+        if (method === "POST") {
+          const item = {
+            id: bodyData.id || `gal-${Date.now()}`,
+            title: bodyData.title,
+            imageUrl: bodyData.imageUrl,
+            description: bodyData.description || "",
+            category: bodyData.category || "Geral",
+            createdAt: bodyData.createdAt || new Date().toISOString()
+          };
+          const index = gallery.findIndex((g: any) => g.id === item.id);
+          if (index !== -1) {
+            gallery[index] = item;
+          } else {
+            gallery.push(item);
+          }
+          setStore("gallery", gallery);
+          return makeResponse(item);
+        }
+      }
+
+      if (pathname.startsWith("/api/gallery/")) {
+        const id = pathname.split("/").pop();
+        const gallery = getStore("gallery", DEFAULT_GALLERY);
+        if (method === "DELETE") {
+          const originalLen = gallery.length;
+          const filtered = gallery.filter((g: any) => g.id !== id);
+          if (filtered.length < originalLen) {
+            setStore("gallery", filtered);
+            return makeResponse({ success: true });
+          } else {
+            return makeResponse({ error: "Item da galeria não encontrado" }, 404);
+          }
         }
       }
     }

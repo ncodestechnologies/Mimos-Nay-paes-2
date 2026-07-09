@@ -47,8 +47,8 @@ export default function Contact() {
                 <Phone className="text-gold-600 w-5 h-5" />
               </div>
               <div>
-                <h4 className="font-semibold text-stone-800 text-sm">Telefone & WhatsApp</h4>
-                <p className="text-stone-600 text-sm mt-0.5">(11) 99999-8888</p>
+                <h4 className="font-semibold text-stone-800 text-sm">WhatsApp</h4>
+                <p className="text-stone-600 text-sm mt-0.5">Atendimento por Mensagem</p>
                 <a
                   href="https://wa.me/5511999998888?text=Olá!%20Gostaria%20de%20um%20orçamento%20da%20Mimos%20Nay%20Paes."
                   target="_blank"

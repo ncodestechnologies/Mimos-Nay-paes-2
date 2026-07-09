@@ -4,6 +4,7 @@ import AboutUs from "./components/AboutUs";
 import Contact from "./components/Contact";
 import CustomerArea from "./components/CustomerArea";
 import DashboardAdmin from "./components/DashboardAdmin";
+import Gallery from "./components/Gallery";
 import { 
   ShoppingBag, Heart, Phone, Mail, Instagram, MapPin, Search, 
   Menu, X, Sparkles, Plus, Minus, Trash2, ChevronRight, Gift, 
@@ -12,7 +13,7 @@ import {
 
 export default function App() {
   // Navigation Routing State
-  const [activeRoute, setActiveRoute] = useState<"home" | "produtos" | "sobre" | "contato" | "cliente" | "admin">("home");
+  const [activeRoute, setActiveRoute] = useState<"home" | "produtos" | "sobre" | "contato" | "cliente" | "admin" | "galeria">("home");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Authentication State
@@ -247,53 +248,10 @@ export default function App() {
         </div>
       )}
 
-      {/* INSTAGRAM INSPIRED UPPER SOCIAL BAR */}
+      {/* UPPER GREETING & BRAND TAGLINE BAR */}
       <div className="bg-gradient-to-r from-rose-100/50 via-beige-100 to-rose-100/30 py-2 border-b border-beige-200">
-        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center text-[11px] font-semibold tracking-wider text-stone-500 uppercase">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5 text-gold-500" /> (11) 99999-8888</span>
-            <span className="hidden sm:flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-gold-500" /> contato@mimosnaypaes.com.br</span>
-          </div>
-          <div className="flex items-center gap-3">
-            {!currentUser || currentUser.role === "customer" ? (
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await fetch("/api/auth/login", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ email: "admin@mimosnaypaes.com.br", password: "admin123" })
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                      handleLogin(data);
-                      setActiveRoute("admin");
-                      showToast("Modo Administrador ativado com sucesso!");
-                    }
-                  } catch (e) {
-                    console.error(e);
-                  }
-                }}
-                className="px-2 py-1 bg-gradient-to-r from-stone-900 to-stone-800 text-gold-400 border border-gold-400/30 rounded text-[10px] font-bold tracking-normal uppercase cursor-pointer transition hover:from-stone-800 hover:to-stone-700 flex items-center gap-1 shadow-sm"
-              >
-                <Sparkles className="w-3 h-3 text-gold-400 animate-pulse" />
-                Acessar Admin (Demo)
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] bg-gold-100 text-gold-700 font-bold px-1.5 py-0.5 rounded">MODO ADMIN</span>
-                <button
-                  onClick={handleLogout}
-                  className="hover:text-rose-500 transition-colors text-[9px] font-semibold uppercase underline cursor-pointer"
-                >
-                  Sair
-                </button>
-              </div>
-            )}
-            <a href="https://instagram.com/mimosnaypaes" target="_blank" referrerPolicy="no-referrer" className="hover:text-gold-500 transition-colors flex items-center gap-1">
-              <Instagram className="w-3.5 h-3.5 text-gold-500" /> @mimosnaypaes
-            </a>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 flex justify-center items-center text-[11px] font-semibold tracking-wider text-stone-500 uppercase">
+          <span>Ateliê Mimos Nay Paes • Presentes com Afeto</span>
         </div>
       </div>
 
@@ -333,6 +291,12 @@ export default function App() {
               Quem Somos
             </button>
             <button
+              onClick={() => setActiveRoute("galeria")}
+              className={`hover:text-gold-500 transition-colors cursor-pointer ${activeRoute === "galeria" ? "text-gold-500 font-semibold" : "text-stone-600"}`}
+            >
+              Galeria de Inspirações
+            </button>
+            <button
               onClick={() => setActiveRoute("contato")}
               className={`hover:text-gold-500 transition-colors cursor-pointer ${activeRoute === "contato" ? "text-gold-500 font-semibold" : "text-stone-600"}`}
             >
@@ -359,6 +323,18 @@ export default function App() {
 
           {/* Header Action Icons */}
           <div className="flex items-center gap-4">
+            {/* Instagram Link */}
+            <a
+              href="https://instagram.com/mimosnaypaes"
+              target="_blank"
+              referrerPolicy="no-referrer"
+              className="p-2 hover:bg-beige-50 rounded-full transition text-rose-500 hover:text-rose-600 cursor-pointer flex items-center gap-1.5"
+              title="Siga no Instagram"
+            >
+              <Instagram className="w-5 h-5" />
+              <span className="hidden sm:inline text-xs font-semibold">@mimosnaypaes</span>
+            </a>
+
             {/* Favorites Indicator icon */}
             <button
               onClick={() => { setActiveRoute("cliente"); }}
@@ -417,6 +393,12 @@ export default function App() {
               className="block w-full text-left text-sm font-semibold text-stone-700 py-1"
             >
               Quem Somos
+            </button>
+            <button
+              onClick={() => { setActiveRoute("galeria"); setMobileMenuOpen(false); }}
+              className="block w-full text-left text-sm font-semibold text-stone-700 py-1"
+            >
+              Galeria de Inspirações
             </button>
             <button
               onClick={() => { setActiveRoute("contato"); setMobileMenuOpen(false); }}
@@ -764,6 +746,9 @@ export default function App() {
         {/* 4. CONTACT VIEW */}
         {activeRoute === "contato" && <Contact />}
 
+        {/* 4.5 GALLERY VIEW */}
+        {activeRoute === "galeria" && <Gallery />}
+
         {/* 5. CUSTOMER AREA VIEW */}
         {activeRoute === "cliente" && (
           <CustomerArea
@@ -783,6 +768,7 @@ export default function App() {
             allProducts={allProducts}
             onRefreshProducts={fetchProducts}
             onLoginSuccess={handleLogin}
+            onLogout={handleLogout}
           />
         )}
       </main>
@@ -813,6 +799,7 @@ export default function App() {
               <li><button onClick={() => setActiveRoute("home")} className="hover:text-white transition cursor-pointer">Início</button></li>
               <li><button onClick={() => setActiveRoute("produtos")} className="hover:text-white transition cursor-pointer">Catálogo Completo</button></li>
               <li><button onClick={() => setActiveRoute("sobre")} className="hover:text-white transition cursor-pointer">Quem Somos</button></li>
+              <li><button onClick={() => setActiveRoute("galeria")} className="hover:text-white transition cursor-pointer">Galeria de Inspirações</button></li>
               <li><button onClick={() => setActiveRoute("contato")} className="hover:text-white transition cursor-pointer">Fale Conosco</button></li>
               <li><button onClick={() => setActiveRoute("cliente")} className="hover:text-white transition cursor-pointer">Acessar Minha Conta</button></li>
               <li><button onClick={() => setActiveRoute("admin")} className="hover:text-white transition cursor-pointer">Painel Administrativo 🔑</button></li>
@@ -823,7 +810,6 @@ export default function App() {
           <div className="space-y-3">
             <h4 className="text-white text-xs font-bold uppercase tracking-widest">Atendimento</h4>
             <ul className="space-y-2 text-xs text-stone-400">
-              <li className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-gold-400 shrink-0" /> (11) 99999-8888</li>
               <li className="flex items-center gap-1.5"><Mail className="w-4 h-4 text-gold-400 shrink-0" /> contato@mimosnaypaes.com.br</li>
               <li className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-gold-400 shrink-0" /> Avenida Paulista, 1000 — SP</li>
             </ul>

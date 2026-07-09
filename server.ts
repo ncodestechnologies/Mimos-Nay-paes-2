@@ -420,6 +420,48 @@ async function startServer() {
     }
   });
 
+  // 7. Gallery API
+  app.get("/api/gallery", (req, res) => {
+    try {
+      res.json(db.getGallery());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/gallery", (req, res) => {
+    try {
+      const { id, title, imageUrl, description, category } = req.body;
+      if (!title || !imageUrl) {
+        return res.status(400).json({ error: "Título e URL da imagem são obrigatórios" });
+      }
+
+      const item = {
+        id: id || "",
+        title,
+        imageUrl,
+        description: description || "",
+        category: category || "Geral",
+        createdAt: req.body.createdAt || new Date().toISOString()
+      };
+
+      const saved = db.saveGallery(item);
+      res.json(saved);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/gallery/:id", (req, res) => {
+    try {
+      const deleted = db.deleteGallery(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Item da galeria não encontrado" });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // --- VITE MIDDLEWARE CONFIGURATION ---
 
   if (process.env.NODE_ENV !== "production") {

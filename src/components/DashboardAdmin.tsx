@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { User, Product, Order, FinanceEntry, ProductionItem, StockItem } from "../types";
+import { User, Product, Order, FinanceEntry, ProductionItem, StockItem, GalleryItem } from "../types";
 import { 
   BarChart3, Box, Users, Wallet, ClipboardList, Hammer, Settings, Plus, 
   Search, ShieldAlert, Eye, Edit, Trash2, CheckCircle2, AlertTriangle, 
   TrendingUp, Download, ArrowUpRight, ArrowDownRight, PackageCheck, Ban, Check,
-  Lock, Key, Mail, EyeOff, ShieldCheck
+  Lock, Key, Mail, EyeOff, ShieldCheck, LogOut, Image as ImageIcon, X
 } from "lucide-react";
 
 interface DashboardAdminProps {
@@ -12,11 +12,12 @@ interface DashboardAdminProps {
   allProducts: Product[];
   onRefreshProducts: () => void;
   onLoginSuccess: (user: User) => void;
+  onLogout: () => void;
 }
 
 type AdminRole = "admin" | "finance" | "production" | "atendimento";
 
-export default function DashboardAdmin({ currentUser, allProducts, onRefreshProducts, onLoginSuccess }: DashboardAdminProps) {
+export default function DashboardAdmin({ currentUser, allProducts, onRefreshProducts, onLoginSuccess, onLogout }: DashboardAdminProps) {
   // Admin Login States
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
@@ -26,7 +27,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
 
   // Simulating active session role bypass for demonstration/testing ease
   const [activeRole, setActiveRole] = useState<AdminRole>("admin");
-  const [currentTab, setCurrentTab] = useState<"visao-geral" | "produtos" | "clientes" | "financeiro" | "producao" | "estoque" | "relatorios">("visao-geral");
+  const [currentTab, setCurrentTab] = useState<"visao-geral" | "produtos" | "clientes" | "financeiro" | "producao" | "estoque" | "relatorios" | "galeria">("visao-geral");
 
   // Core collections synced from server
   const [orders, setOrders] = useState<Order[]>([]);
@@ -34,11 +35,13 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
   const [finance, setFinance] = useState<FinanceEntry[]>([]);
   const [production, setProduction] = useState<ProductionItem[]>([]);
   const [stock, setStock] = useState<StockItem[]>([]);
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
 
   // Search/Filters
   const [productSearch, setProductSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
   const [financeTypeFilter, setFinanceTypeFilter] = useState<"todos" | "receita" | "despesa" | "investimento">("todos");
+  const [gallerySearch, setGallerySearch] = useState("");
 
   // Action states
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
@@ -48,6 +51,14 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
   const [editingFinance, setEditingFinance] = useState<Partial<FinanceEntry> | null>(null);
   const [showFinanceForm, setShowFinanceForm] = useState(false);
   const [selectedClient, setSelectedClient] = useState<User | null>(null);
+
+  // Gallery Form States
+  const [showGalleryForm, setShowGalleryForm] = useState(false);
+  const [editingGallery, setEditingGallery] = useState<Partial<GalleryItem> | null>(null);
+  const [galTitle, setGalTitle] = useState("");
+  const [galImageUrl, setGalImageUrl] = useState("");
+  const [galDescription, setGalDescription] = useState("");
+  const [galCategory, setGalCategory] = useState("Cestas");
 
   // Sync role to current user role initially
   useEffect(() => {
@@ -86,6 +97,12 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
     fetch("/api/stock")
       .then(res => res.json())
       .then(data => Array.isArray(data) && setStock(data))
+      .catch(err => console.error(err));
+
+    // 6. Gallery
+    fetch("/api/gallery")
+      .then(res => res.json())
+      .then(data => Array.isArray(data) && setGalleryItems(data))
       .catch(err => console.error(err));
   };
 
@@ -142,6 +159,80 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
     } finally {
       setIsLoggingIn(false);
     }
+  };
+
+  const handleSaveGallery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!galTitle || !galImageUrl) {
+      alert("Título e URL da imagem são obrigatórios");
+      return;
+    }
+    try {
+      const res = await fetch("/api/gallery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingGallery?.id || "",
+          title: galTitle,
+          imageUrl: galImageUrl,
+          description: galDescription,
+          category: galCategory
+        })
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setGalleryItems(prev => {
+          const idx = prev.findIndex(g => g.id === saved.id);
+          if (idx >= 0) {
+            const copy = [...prev];
+            copy[idx] = saved;
+            return copy;
+          } else {
+            return [...prev, saved];
+          }
+        });
+        setShowGalleryForm(false);
+        setEditingGallery(null);
+        setGalTitle("");
+        setGalImageUrl("");
+        setGalDescription("");
+        setGalCategory("Cestas");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteGallery = async (id: string) => {
+    if (!window.confirm("Deseja realmente remover esta imagem da galeria?")) return;
+    try {
+      const res = await fetch(`/api/gallery/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        setGalleryItems(prev => prev.filter(g => g.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const startEditGallery = (item: GalleryItem) => {
+    setEditingGallery(item);
+    setGalTitle(item.title);
+    setGalImageUrl(item.imageUrl);
+    setGalDescription(item.description || "");
+    setGalCategory(item.category || "Cestas");
+    setShowGalleryForm(true);
+  };
+
+  const startNewGallery = () => {
+    setEditingGallery(null);
+    setGalTitle("");
+    setGalImageUrl("");
+    setGalDescription("");
+    setGalCategory("Cestas");
+    setShowGalleryForm(true);
   };
 
   // Render Login Gate for non-staff
@@ -444,6 +535,18 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* SIDEBAR NAVIGATION */}
         <div className="lg:col-span-3 bg-white border border-beige-200 rounded-2xl p-4 shadow-sm space-y-1.5">
+          {currentUser && (
+            <div className="bg-gradient-to-r from-rose-50/50 to-beige-50/40 p-3 rounded-xl mb-4 border border-beige-100 flex items-center gap-2.5 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center text-gold-400 text-xs font-bold shrink-0">
+                {currentUser.fullName.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-semibold text-stone-800 truncate">{currentUser.fullName}</p>
+                <p className="text-[10px] text-stone-500 uppercase font-mono font-bold tracking-wider">{activeRole}</p>
+              </div>
+            </div>
+          )}
+
           <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest px-3 mb-3">Departamentos</h3>
 
           <button
@@ -508,6 +611,24 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
           >
             <Download className="w-4 h-4" /> Central de Relatórios
           </button>
+
+          <button
+            onClick={() => setCurrentTab("galeria")}
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
+              currentTab === "galeria" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
+            }`}
+          >
+            <ImageIcon className="w-4 h-4" /> Galeria de Fotos
+          </button>
+
+          <div className="border-t border-beige-100 my-2 pt-2">
+            <button
+              onClick={onLogout}
+              className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition flex items-center gap-3 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 text-rose-500" /> Sair do Painel
+            </button>
+          </div>
         </div>
 
         {/* WORKPLACE VIEW */}
@@ -1447,6 +1568,218 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 8: GALLERY MANAGER */}
+          {currentTab === "galeria" && hasAccess(["admin", "atendimento"]) && (
+            <div className="space-y-8">
+              <div className="border-b border-beige-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-display text-2xl text-stone-800 font-semibold">Gestão da Galeria</h3>
+                  <p className="text-stone-500 text-xs">Adicione fotos de encomendas reais concluídas para inspirar novos clientes na galeria pública do site.</p>
+                </div>
+                <button
+                  onClick={startNewGallery}
+                  className="mimos-btn-primary py-2 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Nova Inspiração
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
+                  <Search className="w-4 h-4" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Pesquisar por título ou descrição..."
+                  value={gallerySearch}
+                  onChange={(e) => setGallerySearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border border-beige-200 focus:outline-none focus:ring-2 focus:ring-gold-500 bg-white text-stone-800"
+                />
+              </div>
+
+              {/* Gallery List */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {galleryItems
+                  .filter(item => 
+                    item.title.toLowerCase().includes(gallerySearch.toLowerCase()) ||
+                    (item.description && item.description.toLowerCase().includes(gallerySearch.toLowerCase()))
+                  )
+                  .map((item) => (
+                    <div key={item.id} className="border border-beige-200 rounded-2xl overflow-hidden bg-beige-50/25 flex flex-col justify-between">
+                      <div>
+                        {/* Image preview */}
+                        <div className="aspect-[4/3] bg-stone-100 relative overflow-hidden border-b border-beige-100">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.title}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute top-3 left-3 px-2 py-0.5 bg-stone-900/80 text-gold-400 text-[9px] font-bold uppercase tracking-wider rounded-full">
+                            {item.category || "Geral"}
+                          </span>
+                        </div>
+                        <div className="p-4">
+                          <h4 className="font-semibold text-stone-800 text-sm line-clamp-1">{item.title}</h4>
+                          <p className="text-stone-500 text-xs mt-1 line-clamp-2 leading-relaxed">
+                            {item.description || "Nenhuma descrição informada."}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Action footer */}
+                      <div className="p-4 bg-white border-t border-beige-100 flex items-center justify-between">
+                        <span className="text-[10px] text-stone-400">
+                          {new Date(item.createdAt).toLocaleDateString("pt-BR")}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => startEditGallery(item)}
+                            className="p-1.5 text-stone-600 hover:bg-beige-50 hover:text-stone-800 rounded-lg transition cursor-pointer"
+                            title="Editar"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteGallery(item.id)}
+                            className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition cursor-pointer"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                {galleryItems.length === 0 && (
+                  <div className="col-span-full py-12 text-center bg-white border border-dashed border-beige-300 rounded-2xl">
+                    <ImageIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
+                    <h4 className="font-medium text-stone-600">Nenhum item cadastrado</h4>
+                    <p className="text-stone-400 text-xs mt-1">Clique em "Nova Inspiração" acima para inaugurar a galeria.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal form for creating/editing gallery entries */}
+              {showGalleryForm && (
+                <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                  <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-beige-100 space-y-6 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between pb-3 border-b border-beige-100">
+                      <h3 className="font-display text-xl text-stone-800 font-bold">
+                        {editingGallery ? "Editar Inspiração" : "Nova Inspiração para Galeria"}
+                      </h3>
+                      <button
+                        onClick={() => setShowGalleryForm(false)}
+                        className="p-1.5 hover:bg-stone-100 rounded-full text-stone-500 transition cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSaveGallery} className="space-y-4">
+                      {/* Title */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-stone-600 block">Título do Mimo</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ex: Cesta Premium Café Imperial"
+                          value={galTitle}
+                          onChange={(e) => setGalTitle(e.target.value)}
+                          className="w-full px-3 py-2 border border-beige-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-gold-500 bg-white text-stone-800"
+                        />
+                      </div>
+
+                      {/* Image URL */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-stone-600 block">URL da Imagem</label>
+                        <input
+                          type="url"
+                          required
+                          placeholder="https://images.unsplash.com/..."
+                          value={galImageUrl}
+                          onChange={(e) => setGalImageUrl(e.target.value)}
+                          className="w-full px-3 py-2 border border-beige-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-gold-500 bg-white text-stone-800"
+                        />
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          <span className="text-[10px] text-stone-400 block w-full">Imagens recomendadas Unsplash (clique para usar de exemplo):</span>
+                          <button
+                            type="button"
+                            onClick={() => setGalImageUrl("https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?q=80&w=800&auto=format&fit=crop")}
+                            className="px-2 py-0.5 bg-beige-100 text-stone-600 hover:bg-beige-200 rounded text-[9px] cursor-pointer"
+                          >
+                            Cesta de Café
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setGalImageUrl("https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=800&auto=format&fit=crop")}
+                            className="px-2 py-0.5 bg-beige-100 text-stone-600 hover:bg-beige-200 rounded text-[9px] cursor-pointer"
+                          >
+                            Caneca Rosé
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setGalImageUrl("https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800&auto=format&fit=crop")}
+                            className="px-2 py-0.5 bg-beige-100 text-stone-600 hover:bg-beige-200 rounded text-[9px] cursor-pointer"
+                          >
+                            Caixa Surpresa
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Category selection */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-stone-600 block">Categoria</label>
+                        <select
+                          value={galCategory}
+                          onChange={(e) => setGalCategory(e.target.value)}
+                          className="w-full px-3 py-2 border border-beige-200 rounded-xl text-sm focus:outline-none bg-white text-stone-800 cursor-pointer"
+                        >
+                          <option value="Cestas">Cestas</option>
+                          <option value="Canecas">Canecas</option>
+                          <option value="Caixas">Caixas</option>
+                          <option value="Datas Comemorativas">Datas Comemorativas</option>
+                          <option value="Balões">Balões</option>
+                          <option value="Geral">Geral</option>
+                        </select>
+                      </div>
+
+                      {/* Description */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-stone-600 block">Descrição / Detalhes</label>
+                        <textarea
+                          placeholder="Conte detalhes sobre a personalização, fita, cores, balão..."
+                          value={galDescription}
+                          onChange={(e) => setGalDescription(e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-beige-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-gold-500 bg-white text-stone-800"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4 border-t border-beige-100">
+                        <button
+                          type="button"
+                          onClick={() => setShowGalleryForm(false)}
+                          className="px-4 py-2 border border-beige-200 rounded-xl text-xs text-stone-600 hover:bg-beige-50 transition cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-gradient-to-r from-stone-900 to-stone-800 hover:from-stone-850 hover:to-stone-750 text-gold-400 font-semibold rounded-xl text-xs shadow transition cursor-pointer"
+                        >
+                          {editingGallery ? "Salvar Alterações" : "Adicionar à Galeria"}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -140,6 +140,15 @@ export interface StockItem {
   }[];
 }
 
+export interface GalleryItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  description?: string;
+  category?: string;
+  createdAt: string;
+}
+
 interface DatabaseSchema {
   products: Product[];
   users: User[];
@@ -147,6 +156,7 @@ interface DatabaseSchema {
   finance: FinanceEntry[];
   production: ProductionItem[];
   stock: StockItem[];
+  gallery?: GalleryItem[];
 }
 
 const DEFAULT_PRODUCTS: Product[] = [
@@ -547,6 +557,33 @@ const DEFAULT_STOCK: StockItem[] = [
   }
 ];
 
+const DEFAULT_GALLERY: GalleryItem[] = [
+  {
+    id: "gal-1",
+    title: "Cesta de Café da Manhã Luxuosa",
+    imageUrl: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?q=80&w=800&auto=format&fit=crop",
+    description: "Uma cesta artesanal repleta de flores secas e delícias selecionadas para momentos inesquecíveis.",
+    category: "Cestas",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "gal-2",
+    title: "Caneca Porcelana Rosé Gold Gravada",
+    imageUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=800&auto=format&fit=crop",
+    description: "A queridinha do nosso ateliê com personalização metalizada sob medida.",
+    category: "Canecas",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "gal-3",
+    title: "Caixa Cartonada Preta para Padrinhos",
+    imageUrl: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800&auto=format&fit=crop",
+    description: "Embalagem elegante com fechamento em fita de cetim para presentear pessoas especiais.",
+    category: "Caixas",
+    createdAt: new Date().toISOString()
+  }
+];
+
 class DatabaseEngine {
   private data: DatabaseSchema;
 
@@ -557,7 +594,8 @@ class DatabaseEngine {
       orders: [],
       finance: [],
       production: [],
-      stock: []
+      stock: [],
+      gallery: []
     };
     this.load();
   }
@@ -574,6 +612,7 @@ class DatabaseEngine {
         if (!this.data.finance) this.data.finance = [...DEFAULT_FINANCE];
         if (!this.data.production) this.data.production = [...DEFAULT_PRODUCTION];
         if (!this.data.stock) this.data.stock = [...DEFAULT_STOCK];
+        if (!this.data.gallery) this.data.gallery = [...DEFAULT_GALLERY];
       } catch (err) {
         console.error("Erro ao ler banco de dados JSON. Usando padrões.", err);
         this.resetToDefaults();
@@ -598,7 +637,8 @@ class DatabaseEngine {
       orders: [...DEFAULT_ORDERS],
       finance: [...DEFAULT_FINANCE],
       production: [...DEFAULT_PRODUCTION],
-      stock: [...DEFAULT_STOCK]
+      stock: [...DEFAULT_STOCK],
+      gallery: [...DEFAULT_GALLERY]
     };
     this.save();
   }
@@ -788,6 +828,36 @@ class DatabaseEngine {
     }
     this.save();
     return item;
+  }
+
+  // GALLERY API
+  getGallery(): GalleryItem[] {
+    return this.data.gallery || [];
+  }
+
+  saveGallery(item: GalleryItem): GalleryItem {
+    if (!this.data.gallery) this.data.gallery = [];
+    const idx = this.data.gallery.findIndex(g => g.id === item.id);
+    if (idx >= 0) {
+      this.data.gallery[idx] = item;
+    } else {
+      item.id = `gal-${Date.now()}`;
+      if (!item.createdAt) {
+        item.createdAt = new Date().toISOString();
+      }
+      this.data.gallery.push(item);
+    }
+    this.save();
+    return item;
+  }
+
+  deleteGallery(id: string): boolean {
+    if (!this.data.gallery) return false;
+    const originalLen = this.data.gallery.length;
+    this.data.gallery = this.data.gallery.filter(g => g.id !== id);
+    const deleted = this.data.gallery.length < originalLen;
+    if (deleted) this.save();
+    return deleted;
   }
 }
 
