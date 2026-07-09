@@ -220,49 +220,6 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
               {isLoggingIn ? "Efetuando autenticação..." : "Entrar no Painel 🔑"}
             </button>
           </form>
-
-          <div className="border-t border-beige-100 pt-5">
-            <p className="text-center text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">
-              Acesso Rápido de Demonstração
-            </p>
-            <div className="grid grid-cols-1 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleQuickAdminLogin("admin@mimosnaypaes.com.br", "admin123")}
-                className="w-full px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white border border-stone-800 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm group"
-              >
-                <span className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-gold-400 group-hover:scale-110 transition" />
-                  <span>Gerente Geral (Admin)</span>
-                </span>
-                <span className="text-[10px] text-stone-400 font-mono">Acessar ➜</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickAdminLogin("financeiro@mimosnaypaes.com.br", "financeiro123")}
-                className="w-full px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm group"
-              >
-                <span className="flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition shrink-0" />
-                  <span>Fluxo Financeiro</span>
-                </span>
-                <span className="text-[10px] text-emerald-600 font-mono font-bold">Acessar ➜</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickAdminLogin("producao@mimosnaypaes.com.br", "producao123")}
-                className="w-full px-4 py-2.5 bg-rose-50 hover:bg-rose-100/80 text-rose-900 border border-rose-200 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm group"
-              >
-                <span className="flex items-center gap-2">
-                  <Hammer className="w-4 h-4 text-rose-600 group-hover:scale-110 transition shrink-0" />
-                  <span>Oficina de Produção</span>
-                </span>
-                <span className="text-[10px] text-rose-600 font-mono font-bold">Acessar ➜</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     );
