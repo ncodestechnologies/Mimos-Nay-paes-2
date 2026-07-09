@@ -18,7 +18,7 @@ interface DashboardAdminProps {
 type AdminRole = "admin" | "finance" | "production" | "atendimento";
 
 export default function DashboardAdmin({ currentUser, allProducts, onRefreshProducts, onLoginSuccess, onLogout }: DashboardAdminProps) {
-  const isNayara = currentUser?.email.toLowerCase() === "nayara";
+  // isNayara restriction removed
 
   // Admin Login States
   const [adminEmail, setAdminEmail] = useState("");
@@ -88,9 +88,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
   useEffect(() => {
     if (currentUser && currentUser.role !== "customer") {
       setActiveRole(currentUser.role as AdminRole);
-      if (currentUser.email.toLowerCase() === "nayara") {
-        setCurrentTab("clientes");
-      }
+      // Default to general tab for all admin accounts
     }
   }, [currentUser]);
 
@@ -709,30 +707,26 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
           )}
 
           <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest px-3 mb-3">
-            {isNayara ? "Acesso Restrito" : "Departamentos"}
+            Departamentos
           </h3>
 
-          {!isNayara && (
-            <>
-              <button
-                onClick={() => setCurrentTab("visao-geral")}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
-                  currentTab === "visao-geral" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
-                }`}
-              >
-                <BarChart3 className="w-4 h-4" /> Visão Geral (Métricas)
-              </button>
+          <button
+            onClick={() => setCurrentTab("visao-geral")}
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
+              currentTab === "visao-geral" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" /> Visão Geral (Métricas)
+          </button>
 
-              <button
-                onClick={() => setCurrentTab("produtos")}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
-                  currentTab === "produtos" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
-                }`}
-              >
-                <Box className="w-4 h-4" /> Gestão de Catálogo
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => setCurrentTab("produtos")}
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
+              currentTab === "produtos" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
+            }`}
+          >
+            <Box className="w-4 h-4" /> Gestão de Catálogo
+          </button>
 
           <button
             onClick={() => setCurrentTab("clientes")}
@@ -743,54 +737,50 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
             <Users className="w-4 h-4" /> {currentUser?.email.toLowerCase() === "programador" ? "Gestão de Cadastros" : "Gestão de Clientes"}
           </button>
 
-          {!isNayara && (
-            <>
-              <button
-                onClick={() => setCurrentTab("financeiro")}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
-                  currentTab === "financeiro" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
-                }`}
-              >
-                <Wallet className="w-4 h-4" /> Controle Financeiro
-              </button>
+          <button
+            onClick={() => setCurrentTab("financeiro")}
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
+              currentTab === "financeiro" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
+            }`}
+          >
+            <Wallet className="w-4 h-4" /> Controle Financeiro
+          </button>
 
-              <button
-                onClick={() => setCurrentTab("producao")}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
-                  currentTab === "producao" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
-                }`}
-              >
-                <Hammer className="w-4 h-4" /> Fila de Produção
-              </button>
+          <button
+            onClick={() => setCurrentTab("producao")}
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
+              currentTab === "producao" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
+            }`}
+          >
+            <Hammer className="w-4 h-4" /> Fila de Produção
+          </button>
 
-              <button
-                onClick={() => setCurrentTab("estoque")}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
-                  currentTab === "estoque" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
-                }`}
-              >
-                <ClipboardList className="w-4 h-4" /> Controle de Estoque
-              </button>
+          <button
+            onClick={() => setCurrentTab("estoque")}
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
+              currentTab === "estoque" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" /> Controle de Estoque
+          </button>
 
-              <button
-                onClick={() => setCurrentTab("relatorios")}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
-                  currentTab === "relatorios" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
-                }`}
-              >
-                <Download className="w-4 h-4" /> Central de Relatórios
-              </button>
+          <button
+            onClick={() => setCurrentTab("relatorios")}
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
+              currentTab === "relatorios" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
+            }`}
+          >
+            <Download className="w-4 h-4" /> Central de Relatórios
+          </button>
 
-              <button
-                onClick={() => setCurrentTab("galeria")}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
-                  currentTab === "galeria" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
-                }`}
-              >
-                <ImageIcon className="w-4 h-4" /> Galeria de Fotos
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => setCurrentTab("galeria")}
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-3 cursor-pointer ${
+              currentTab === "galeria" ? "bg-gold-50 text-gold-600 font-semibold" : "text-stone-600 hover:bg-beige-50"
+            }`}
+          >
+            <ImageIcon className="w-4 h-4" /> Galeria de Fotos
+          </button>
 
           <div className="border-t border-beige-100 my-2 pt-2">
             <button
@@ -806,7 +796,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
         <div className="lg:col-span-9 bg-white border border-beige-100 rounded-3xl p-6 md:p-8 shadow-sm">
           
           {/* TAB 1: VISÃO GERAL */}
-          {currentTab === "visao-geral" && hasAccess(["admin", "finance", "atendimento"]) && !isNayara && (
+          {currentTab === "visao-geral" && hasAccess(["admin", "finance", "atendimento"]) && (
             <div className="space-y-8">
               <div className="border-b border-beige-100 pb-4 flex justify-between items-center">
                 <div>
@@ -938,7 +928,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
           )}
 
           {/* TAB 2: PRODUCTS CRUD */}
-          {currentTab === "produtos" && hasAccess(["admin", "atendimento"]) && !isNayara && (
+          {currentTab === "produtos" && hasAccess(["admin", "atendimento"]) && (
             <div className="space-y-6">
               <div className="border-b border-beige-100 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -1613,7 +1603,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
           )}
 
           {/* TAB 4: FINANCIAL CRUD */}
-          {currentTab === "financeiro" && hasAccess(["admin", "finance"]) && !isNayara && (
+          {currentTab === "financeiro" && hasAccess(["admin", "finance"]) && (
             <div className="space-y-6">
               <div className="border-b border-beige-100 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -1805,7 +1795,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
           )}
 
           {/* TAB 5: PRODUCTION QUEUE */}
-          {currentTab === "producao" && hasAccess(["admin", "production"]) && !isNayara && (
+          {currentTab === "producao" && hasAccess(["admin", "production"]) && (
             <div className="space-y-6">
               <div className="border-b border-beige-100 pb-4">
                 <h3 className="font-display text-2xl text-stone-800 font-semibold">Fila e Controle de Produção</h3>
@@ -1877,7 +1867,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
           )}
 
           {/* TAB 6: STOCK CONTROL */}
-          {currentTab === "estoque" && hasAccess(["admin", "production"]) && !isNayara && (
+          {currentTab === "estoque" && hasAccess(["admin", "production"]) && (
             <div className="space-y-6">
               <div className="border-b border-beige-100 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -2199,7 +2189,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
           )}
 
           {/* TAB 7: REPORT CENTER */}
-          {currentTab === "relatorios" && hasAccess(["admin", "finance", "production"]) && !isNayara && (
+          {currentTab === "relatorios" && hasAccess(["admin", "finance", "production"]) && (
             <div className="space-y-8">
               <div className="border-b border-beige-100 pb-4">
                 <h3 className="font-display text-2xl text-stone-800 font-semibold">Central de Relatórios Administrativos</h3>
@@ -2250,7 +2240,7 @@ export default function DashboardAdmin({ currentUser, allProducts, onRefreshProd
           )}
 
           {/* TAB 8: GALLERY MANAGER */}
-          {currentTab === "galeria" && hasAccess(["admin", "atendimento"]) && !isNayara && (
+          {currentTab === "galeria" && hasAccess(["admin", "atendimento"]) && (
             <div className="space-y-8">
               <div className="border-b border-beige-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>

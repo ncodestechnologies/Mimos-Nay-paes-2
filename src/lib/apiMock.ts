@@ -105,61 +105,50 @@ const DEFAULT_PRODUCTS = [
 
 const DEFAULT_USERS = [
   {
-    id: "usr-admin",
-    fullName: "Nayara Paes",
+    id: "usr-programador",
+    fullName: "Programador",
+    cpf: "000.000.000-00",
+    birthDate: "1990-01-01",
+    phone: "(11) 99999-9999",
+    whatsapp: "(11) 99999-9999",
+    email: "programador",
+    passwordHash: "6698d3680b6514c1c48834740e3eef589b093f0411b46a30c5e03aca1c385eb2", // SHA256 of "Taijou13"
+    addresses: [],
+    role: "admin",
+    blocked: false,
+    internalNotes: "Desenvolvedor com acesso total ao sistema",
+    totalSpent: 0,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "usr-nayara",
+    fullName: "Nayara",
     cpf: "123.456.789-00",
     birthDate: "1994-05-15",
     phone: "(11) 99999-8888",
     whatsapp: "(11) 99999-8888",
-    email: "admin@mimosnaypaes.com.br",
-    passwordHash: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918", // SHA256 of "admin123"
-    addresses: [
-      {
-        id: "addr-1",
-        cep: "01310-100",
-        street: "Avenida Paulista",
-        number: "1000",
-        neighborhood: "Bela Vista",
-        city: "São Paulo",
-        state: "SP",
-        reference: "Próximo ao MASP"
-      }
-    ],
+    email: "Nayara",
+    passwordHash: "887309fc5f170821709b78c049180c23d8b930d736003c2857083f3888798767", // SHA256 of "nayara123"
+    addresses: [],
     role: "admin",
     blocked: false,
-    internalNotes: "Proprietária e Administradora Principal",
+    internalNotes: "Dona / Proprietária - Acesso abaixo do programador",
     totalSpent: 0,
     createdAt: new Date().toISOString()
   },
   {
-    id: "usr-finance",
-    fullName: "Gabriela Silva (Financeiro)",
+    id: "usr-financeiro",
+    fullName: "Financeiro",
     cpf: "222.333.444-55",
     birthDate: "1991-08-20",
     phone: "(11) 98888-7777",
     whatsapp: "(11) 98888-7777",
-    email: "financeiro@mimosnaypaes.com.br",
-    passwordHash: "c460d3d4b6b64d1f5e8f6ff67140f7b1fc68cd902787fcdae849fae6cb4e5a97", // SHA256 of "financeiro123"
+    email: "financeiro",
+    passwordHash: "18aaf426c24faf79a69d66ab71e66d2a8e6e4d593af11863ab6f41ca04833848", // SHA256 of "financeiro123"
     addresses: [],
     role: "finance",
     blocked: false,
-    internalNotes: "Responsável pelas contas e fluxo de caixa",
-    totalSpent: 0,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "usr-prod",
-    fullName: "Carlos Souza (Produção)",
-    cpf: "333.444.555-66",
-    birthDate: "1988-11-02",
-    phone: "(11) 97777-6666",
-    whatsapp: "(11) 97777-6666",
-    email: "producao@mimosnaypaes.com.br",
-    passwordHash: "467005477c773a4b643cb009b7c8df0b7194f42bb0dfdbb200fb1609ff0a7bc0", // SHA256 of "producao123"
-    addresses: [],
-    role: "production",
-    blocked: false,
-    internalNotes: "Chefe do ateliê de montagem",
+    internalNotes: "Responsável pelo financeiro",
     totalSpent: 0,
     createdAt: new Date().toISOString()
   },
@@ -167,11 +156,11 @@ const DEFAULT_USERS = [
     id: "usr-customer",
     fullName: "Mariana Medeiros",
     cpf: "444.555.666-77",
-    birthDate: "1997-03-25",
-    phone: "(11) 96666-5555",
-    whatsapp: "(11) 96666-5555",
+    birthDate: "1998-10-22",
+    phone: "(11) 91111-2222",
+    whatsapp: "(11) 91111-2222",
     email: "mariana@gmail.com",
-    passwordHash: "8b233e721666fffa49e6d8b67118afb8178652c79bf200b3f81e3a6bc4c8032c", // SHA256 of "cliente123"
+    passwordHash: "09a31a7001e261ab1e056182a71d3cf57f582ca9a29cff5eb83be0f0549730a9", // SHA256 of "cliente123"
     addresses: [
       {
         id: "addr-customer-1",
@@ -186,8 +175,8 @@ const DEFAULT_USERS = [
     ],
     role: "customer",
     blocked: false,
-    internalNotes: "Cliente fiel, adora cestas de café",
-    totalSpent: 393.80,
+    internalNotes: "Cliente recorrente de cestas de café",
+    totalSpent: 379.80,
     createdAt: new Date().toISOString()
   }
 ];
@@ -468,6 +457,23 @@ export async function setupFetchInterceptor() {
   const originalFetch = window.fetch;
   let useLocalMock = false;
 
+  // Check if old mock user database is cached and clear it to align with new credentials
+  try {
+    const cachedUsers = localStorage.getItem("mimos_db_users");
+    if (cachedUsers && (cachedUsers.includes("admin@mimosnaypaes.com.br") || !cachedUsers.includes("usr-nayara"))) {
+      console.log("[Mimos API Mock] Versão antiga do mock ou usuário nayara ausente detectado. Resetando banco local.");
+      localStorage.removeItem("mimos_db_users");
+      localStorage.removeItem("mimos_db_products");
+      localStorage.removeItem("mimos_db_orders");
+      localStorage.removeItem("mimos_db_finance");
+      localStorage.removeItem("mimos_db_production");
+      localStorage.removeItem("mimos_db_stock");
+      localStorage.removeItem("mimos_db_gallery");
+    }
+  } catch (e) {
+    // ignore
+  }
+
   try {
     const probe = await originalFetch("/api/products");
     const contentType = probe.headers.get("content-type");
@@ -572,12 +578,12 @@ export async function setupFetchInterceptor() {
         }
         
         const calculatedHash = await hashStr(password);
-        const isDefaultAdmin = email.toLowerCase() === "admin@mimosnaypaes.com.br" && password === "admin123";
-        const isDefaultFinance = email.toLowerCase() === "financeiro@mimosnaypaes.com.br" && password === "financeiro123";
-        const isDefaultProd = email.toLowerCase() === "producao@mimosnaypaes.com.br" && password === "producao123";
+        const isDefaultProgramador = email.toLowerCase() === "programador" && password === "Taijou13";
+        const isDefaultNayara = email.toLowerCase() === "nayara" && password === "nayara123";
+        const isDefaultFinanceiro = email.toLowerCase() === "financeiro" && password === "financeiro123";
         const isDefaultCustomer = email.toLowerCase() === "mariana@gmail.com" && password === "cliente123";
 
-        const isValid = isDefaultAdmin || isDefaultFinance || isDefaultProd || isDefaultCustomer || 
+        const isValid = isDefaultProgramador || isDefaultNayara || isDefaultFinanceiro || isDefaultCustomer || 
                         (user.passwordHash === password) || (user.passwordHash === calculatedHash);
 
         if (!isValid) {
