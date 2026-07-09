@@ -68,7 +68,10 @@ async function startServer() {
         return res.status(400).json({ error: "Campos obrigatórios ausentes" });
       }
 
-      const existing = db.getUserByEmail(email);
+      const trimmedEmail = email.trim();
+      const trimmedPassword = password.trim();
+
+      const existing = db.getUserByEmail(trimmedEmail);
       if (existing) {
         return res.status(400).json({ error: "E-mail já cadastrado" });
       }
@@ -81,8 +84,8 @@ async function startServer() {
         birthDate,
         phone,
         whatsapp: whatsapp || phone,
-        email,
-        passwordHash: hashPassword(password),
+        email: trimmedEmail,
+        passwordHash: hashPassword(trimmedPassword),
         addresses: address ? [ { ...address, id: `addr-${Date.now()}` } ] : [],
         role: "customer" as const,
         blocked: false,
@@ -106,7 +109,10 @@ async function startServer() {
         return res.status(400).json({ error: "E-mail e senha são obrigatórios" });
       }
 
-      const user = db.getUserByEmail(email);
+      const trimmedEmail = email.trim();
+      const trimmedPassword = password.trim();
+
+      const user = db.getUserByEmail(trimmedEmail);
       if (!user) {
         return res.status(401).json({ error: "Credenciais inválidas" });
       }
@@ -115,14 +121,14 @@ async function startServer() {
         return res.status(403).json({ error: "Usuário temporariamente bloqueado. Contate o suporte." });
       }
 
-      const calculatedHash = hashPassword(password);
-      const isDefaultProgramador = email.toLowerCase() === "programador" && password === "Taijou13";
-      const isDefaultNayara = email.toLowerCase() === "nayara" && password === "nayara123";
-      const isDefaultFinanceiro = email.toLowerCase() === "financeiro" && password === "financeiro123";
-      const isDefaultCustomer = email.toLowerCase() === "mariana@gmail.com" && password === "cliente123";
+      const calculatedHash = hashPassword(trimmedPassword);
+      const isDefaultProgramador = trimmedEmail.toLowerCase() === "programador" && trimmedPassword === "Taijou13";
+      const isDefaultNayara = trimmedEmail.toLowerCase() === "nayara" && trimmedPassword === "nayara123";
+      const isDefaultFinanceiro = trimmedEmail.toLowerCase() === "financeiro" && trimmedPassword === "financeiro123";
+      const isDefaultCustomer = trimmedEmail.toLowerCase() === "mariana@gmail.com" && trimmedPassword === "cliente123";
 
       const isValid = isDefaultProgramador || isDefaultNayara || isDefaultFinanceiro || isDefaultCustomer || 
-                      (user.passwordHash === password) || (user.passwordHash === calculatedHash);
+                      (user.passwordHash === trimmedPassword) || (user.passwordHash === calculatedHash);
 
       if (!isValid) {
         return res.status(401).json({ error: "Credenciais inválidas" });
@@ -151,7 +157,10 @@ async function startServer() {
         return res.status(400).json({ error: "Nome, usuário/e-mail e senha são obrigatórios" });
       }
 
-      const existing = db.getUserByEmail(email);
+      const trimmedEmail = email.trim();
+      const trimmedPassword = password.trim();
+
+      const existing = db.getUserByEmail(trimmedEmail);
       if (existing) {
         return res.status(400).json({ error: "E-mail ou Usuário já cadastrado" });
       }
@@ -163,8 +172,8 @@ async function startServer() {
         birthDate: birthDate || "1990-01-01",
         phone: phone || "",
         whatsapp: whatsapp || phone || "",
-        email,
-        passwordHash: hashPassword(password),
+        email: trimmedEmail,
+        passwordHash: hashPassword(trimmedPassword),
         addresses: [],
         role: role || "customer",
         blocked: false,
@@ -468,6 +477,20 @@ async function startServer() {
 
       const saved = db.saveStock(item);
       res.json(saved);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/stock/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = db.deleteStock(id);
+      if (deleted) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: "Item de estoque não encontrado" });
+      }
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

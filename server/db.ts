@@ -827,6 +827,14 @@ class DatabaseEngine {
     return item;
   }
 
+  deleteStock(id: string): boolean {
+    const originalLen = this.data.stock.length;
+    this.data.stock = this.data.stock.filter(s => s.id !== id);
+    const deleted = this.data.stock.length < originalLen;
+    if (deleted) this.save();
+    return deleted;
+  }
+
   // GALLERY API
   getGallery(): GalleryItem[] {
     return this.data.gallery || [];
