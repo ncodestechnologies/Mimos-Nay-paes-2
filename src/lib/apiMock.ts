@@ -460,15 +460,22 @@ export async function setupFetchInterceptor() {
   // Check if old mock user database is cached and clear it to align with new credentials
   try {
     const cachedUsers = localStorage.getItem("mimos_db_users");
-    if (cachedUsers && (cachedUsers.includes("admin@mimosnaypaes.com.br") || !cachedUsers.includes("usr-nayara"))) {
-      console.log("[Mimos API Mock] Versão antiga do mock ou usuário nayara ausente detectado. Resetando banco local.");
-      localStorage.removeItem("mimos_db_users");
-      localStorage.removeItem("mimos_db_products");
-      localStorage.removeItem("mimos_db_orders");
-      localStorage.removeItem("mimos_db_finance");
-      localStorage.removeItem("mimos_db_production");
-      localStorage.removeItem("mimos_db_stock");
-      localStorage.removeItem("mimos_db_gallery");
+    if (cachedUsers) {
+      const hasOldAdmin = cachedUsers.includes("admin@mimosnaypaes.com.br");
+      const hasNayara = cachedUsers.includes("usr-nayara");
+      const hasProgramador = cachedUsers.includes("usr-programador");
+      const hasFinanceiro = cachedUsers.includes("usr-financeiro");
+      
+      if (hasOldAdmin || !hasNayara || !hasProgramador || !hasFinanceiro) {
+        console.log("[Mimos API Mock] Versão antiga do mock detectada (faltando novos usuários ou contendo admin antigo). Resetando bancos de dados locais.");
+        localStorage.removeItem("mimos_db_users");
+        localStorage.removeItem("mimos_db_products");
+        localStorage.removeItem("mimos_db_orders");
+        localStorage.removeItem("mimos_db_finance");
+        localStorage.removeItem("mimos_db_production");
+        localStorage.removeItem("mimos_db_stock");
+        localStorage.removeItem("mimos_db_gallery");
+      }
     }
   } catch (e) {
     // ignore
