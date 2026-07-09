@@ -457,7 +457,7 @@ export async function setupFetchInterceptor() {
   }
 
   // Intercept window.fetch
-  window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const customFetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const urlStr = typeof input === "string" ? input : (input instanceof URL ? input.href : input.url);
     
     // Only intercept requests to /api/ and only if we are using local mockup
@@ -870,4 +870,18 @@ export async function setupFetchInterceptor() {
     // Call real fetch if not intercepted or if mock is turned off
     return originalFetch(input, init);
   };
+
+  try {
+    window.fetch = customFetch;
+  } catch (e) {
+    try {
+      Object.defineProperty(window, "fetch", {
+        value: customFetch,
+        configurable: true,
+        writable: true
+      });
+    } catch (err) {
+      console.error("[Mimos API Mock] Erro ao redefinir window.fetch:", err);
+    }
+  }
 }
