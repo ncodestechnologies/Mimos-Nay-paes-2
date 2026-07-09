@@ -1,0 +1,6 @@
+{
+  "name": "Mimos Nay Paes",
+  "description": "Sistema completo de catálogo, e-commerce e gestão administrativa para Mimos Nay Paes, especializada em presentes personalizados, cestas e caixas surpresa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
